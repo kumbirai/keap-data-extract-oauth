@@ -15,6 +15,7 @@ The project plan is organized into the following sections:
 7. **[Testing Strategy](07-testing-strategy.md)** - Testing approach and requirements
 8. **[Deployment Guide](08-deployment-guide.md)** - Deployment instructions and procedures
 9. **[Appendix](09-appendix.md)** - Reference materials and additional information
+10. **[VPS deployment (KVM 2)](vps-kvm2-deployment/README.md)** - Ubuntu + PostgreSQL + extractor; Power BI on Windows via SSH tunnel
 
 ## Quick Start
 
@@ -22,6 +23,7 @@ The project plan is organized into the following sections:
 2. Review [OAuth2 Authentication Design](02-oauth2-authentication.md) for authentication details
 3. Check [Implementation Phases](05-implementation-phases.md) for development roadmap
 4. Refer to [Deployment Guide](08-deployment-guide.md) when ready to deploy
+5. For a small VPS (e.g. KVM 2) with Power BI on a Windows PC, see [VPS deployment (KVM 2)](vps-kvm2-deployment/README.md)
 
 ## Key Features
 

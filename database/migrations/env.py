@@ -31,7 +31,8 @@ def get_url():
     )
 
 
-config.set_main_option("sqlalchemy.url", get_url())
+# ConfigParser treats % as interpolation; encoded passwords contain %24, %40, etc.
+config.set_main_option("sqlalchemy.url", get_url().replace("%", "%%"))
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

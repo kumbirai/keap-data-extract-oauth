@@ -5,6 +5,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.pool import QueuePool
 
+from src.postgres_url import build_postgres_sqlalchemy_url
+
 load_dotenv()
 
 # Database configuration from environment variables
@@ -14,8 +16,9 @@ DB_NAME = os.getenv('DB_NAME', 'keap_db')
 DB_USER = os.getenv('DB_USER', 'postgres')
 DB_PASSWORD = os.getenv('DB_PASSWORD', 'secret')
 
-# Construct database URL
-DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+DATABASE_URL = build_postgres_sqlalchemy_url(
+    DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME
+)
 
 # Create engine with connection pooling
 engine = create_engine(

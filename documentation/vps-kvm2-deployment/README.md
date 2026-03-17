@@ -59,13 +59,15 @@ Create role and database. Use a **quoted heredoc** so passwords with `!`, `$`, o
 
 ```bash
 sudo -u postgres psql <<'EOSQL'
-CREATE USER keap_user WITH PASSWORD '$3cur3-P@ssw0rd';
+CREATE USER keap_user WITH PASSWORD 'your_database_password_here';
 CREATE DATABASE keap_db OWNER keap_user;
 GRANT ALL PRIVILEGES ON DATABASE keap_db TO keap_user;
 EOSQL
 ```
 
 Edit only the string inside `PASSWORD '...'`. The `<<'EOSQL'` form passes the block to `psql` literally—no shell interpretation of `!` or `$`.
+
+**`.env` and passwords with `@`:** Use the raw password in `DB_PASSWORD` (e.g. `$3cur3-P@ssw0rd`). The app URL-encodes credentials when building the PostgreSQL URL so `@` does not break Alembic or the app (unencoded `@` was previously parsed as part of the hostname).
 
 **Keep PostgreSQL on localhost only** (default on Ubuntu: `listen_addresses = 'localhost'` in `postgresql.conf`). Do not expose `5432` to the internet; access from Windows is via **SSH tunnel** below.
 
@@ -77,7 +79,7 @@ Edit only the string inside `PASSWORD '...'`. The `<<'EOSQL'` form passes the bl
 sudo mkdir -p /opt/keap-extract
 sudo chown "$USER:$USER" /opt/keap-extract
 cd /opt/keap-extract
-git clone <your-repository-url> app
+git clone https://github.com/kumbirai/keap-data-extract-oauth.git app
 cd app
 python3 -m venv venv
 source venv/bin/activate
@@ -93,6 +95,28 @@ Edit `.env`:
 ```bash
 alembic upgrade head
 ```
+
+### 3.1 Update the app later (`git pull`)
+
+From the server, in the same directory you cloned into:
+
+```bash
+cd /opt/keap-extract/app
+git pull origin main
+```
+
+Use `main` or whatever your default branch is (`git branch -r` to see).
+
+Then refresh dependencies and migrations if the repo changed them:
+
+```bash
+source venv/bin/activate
+pip install -r requirements.txt
+alembic upgrade head
+```
+
+- **`.env`** is local-only (not in git); `git pull` does not replace it.
+- If you have local changes, `git pull` may fail; either **stash** (`git stash`, pull, `git stash pop`) or commit on a branch—avoid editing tracked files on the VPS long-term.
 
 ---
 

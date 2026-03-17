@@ -13,19 +13,25 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../../src'))
 # Load environment variables from .env file
 load_dotenv()
 
+from src.postgres_url import build_postgres_sqlalchemy_url
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
 
-# Get database URL from environment
-DB_HOST = os.getenv('DB_HOST', 'localhost')
-DB_PORT = os.getenv('DB_PORT', '5432')
-DB_NAME = os.getenv('DB_NAME', 'keap_db')
-DB_USER = os.getenv('DB_USER', 'postgres')
-DB_PASSWORD = os.getenv('DB_PASSWORD', 'secret')
 
-# Set the database URL in the alembic.ini file
-config.set_main_option('sqlalchemy.url', f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}")
+def get_url():
+    """Get the database URL from environment variables (password-safe encoding)."""
+    return build_postgres_sqlalchemy_url(
+        os.getenv("DB_USER", "postgres"),
+        os.getenv("DB_PASSWORD", "postgres"),
+        os.getenv("DB_HOST", "localhost"),
+        os.getenv("DB_PORT", "5432"),
+        os.getenv("DB_NAME", "keap_db"),
+    )
+
+
+config.set_main_option("sqlalchemy.url", get_url())
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -41,16 +47,6 @@ target_metadata = Base.metadata
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
-
-def get_url():
-    """Get the database URL from environment variables."""
-    user = os.getenv('DB_USER', 'postgres')
-    password = os.getenv('DB_PASSWORD', 'postgres')
-    host = os.getenv('DB_HOST', 'localhost')
-    port = os.getenv('DB_PORT', '5432')
-    dbname = os.getenv('DB_NAME', 'keap_db')
-    
-    return f"postgresql://{user}:{password}@{host}:{port}/{dbname}"
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.

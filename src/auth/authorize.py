@@ -1,5 +1,6 @@
 """Interactive CLI tool for OAuth2 authorization."""
 import logging
+import os
 import sys
 import webbrowser
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -131,6 +132,15 @@ def main():
             # Update redirect URI to use localhost with port
             redirect_uri = f"http://localhost:{port}/oauth/callback"
             logger.info(f"Using localhost redirect URI: {redirect_uri}")
+        elif parsed_uri.scheme == 'https' and parsed_uri.netloc:
+            # Public HTTPS URI (e.g. VPS + nginx + Let's Encrypt). Keap redirects to :443;
+            # nginx proxies /oauth/callback to this app on a high port (cannot bind :443 if nginx owns it).
+            port = int(os.getenv('OAUTH_CALLBACK_LISTEN_PORT', '8000'))
+            logger.info(
+                "HTTPS redirect URI: callback server on 127.0.0.1:%s (nginx must proxy "
+                "/oauth/callback here). Override with OAUTH_CALLBACK_LISTEN_PORT.",
+                port,
+            )
         
         # Initialize database session
         db = SessionLocal()

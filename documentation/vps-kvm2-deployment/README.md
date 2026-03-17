@@ -122,21 +122,67 @@ alembic upgrade head
 
 ## 4. OAuth (Keap) on the VPS
 
-Production Keap apps expect an **HTTPS** redirect URI. On the VPS, typical approach:
+Keap requires an **HTTPS** redirect URI. The authorize script starts a **small HTTP server** on the VPS; **nginx** serves HTTPS and **reverse-proxies** `/oauth/callback` to that server (default **port 8000**). Your browser must be able to open the HTTPS URL (same host as SSH or your PC’s browser is fine).
 
-1. Point a **DNS name** (e.g. `keap-oauth.example.com`) to the server IP.
-2. Install **nginx** and **Certbot** (Let’s Encrypt); terminate TLS on nginx.
-3. For **one-time authorization**, proxy `https://<your-host>/oauth/callback` to the local callback port used by `python -m src.auth.authorize` (see app docs; default dev URI in `.env.example` uses port `8000`).
-4. Set `KEAP_REDIRECT_URI` in `.env` to match the **exact** URL registered in the Keap Developer Portal.
+### 4.1 DNS and hostname
 
-Run authorization once on the server:
+- **Custom domain:** Create an **A record** pointing to the VPS IP (e.g. `keap-oauth.example.com`).
+- **Hostinger hostname:** Many plans provide a hostname such as `srv1498298.hstgr.cloud` that already resolves to the server—use that if you do not have a separate domain.
+
+Pick **one** canonical URL, e.g. `https://srv1498298.hstgr.cloud/oauth/callback`.
+
+### 4.2 Keap Developer Portal
+
+1. Open your app at [Keap Developer Portal](https://developer.keap.com/).
+2. Set the redirect / callback URL to the **exact** HTTPS URL (trailing path **`/oauth/callback`**, no typo).
+3. Copy **Client ID** and **Client Secret** into `.env`.
+
+### 4.3 nginx and Let’s Encrypt
+
+```bash
+sudo apt install -y nginx certbot python3-certbot-nginx
+sudo certbot --nginx -d srv1498298.hstgr.cloud
+```
+
+Replace `srv1498298.hstgr.cloud` with your **A record** or Hostinger hostname. Follow the prompts (email, agree to terms). Certbot will configure nginx for HTTPS.
+
+Add a **proxy** for the OAuth callback. Edit the server block Certbot created (often `/etc/nginx/sites-available/default` or a site under `sites-available/`):
+
+```nginx
+location /oauth/callback {
+    proxy_pass http://127.0.0.1:8000;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
+Then:
+
+```bash
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+### 4.4 `.env` on the VPS
+
+```env
+KEAP_REDIRECT_URI=https://srv1498298.hstgr.cloud/oauth/callback
+OAUTH_CALLBACK_LISTEN_PORT=8000
+```
+
+Must match the Keap portal **character for character** (scheme, host, path). Change the hostname to yours. Port `8000` is where the Python callback server listens; nginx terminates TLS on **443** and forwards to `8000`.
+
+### 4.5 Run authorization (one time)
 
 ```bash
 cd /opt/keap-extract/app && source venv/bin/activate
 python -m src.auth.authorize
 ```
 
-Complete the browser flow; tokens are stored in PostgreSQL.
+On a headless server the browser may not open. Copy the **authorization URL** from the log, open it on **your PC** (or any machine), sign in to Keap, and approve. Keap will redirect your browser to `https://your-host/oauth/callback?code=...` → nginx → Python on port 8000 → tokens saved in PostgreSQL.
+
+If the callback never completes, check nginx error log (`/var/log/nginx/error.log`) and that nothing else is using port **8000** during authorize.
 
 ---
 

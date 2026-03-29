@@ -57,6 +57,8 @@ The existing database schema from the previous implementation will be maintained
 - `custom_fields` and custom field value tables
 - `account_profiles`, `business_goals`
 
+For **Stripe** data intended for BI next to Keap data, see [Stripe BI (PostgreSQL extension)](stripe/README.md) (`stripe_charges` as the primary payment fact, plus related `stripe_*` tables, extract order, and reporting notes).
+
 ## 4.2 Token Encryption
 
 ### 4.2.1 Encryption Strategy

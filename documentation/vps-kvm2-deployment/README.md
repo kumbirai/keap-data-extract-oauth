@@ -69,7 +69,48 @@ Edit only the string inside `PASSWORD '...'`. The `<<'EOSQL'` form passes the bl
 
 **`.env` and passwords with `@`:** Use the raw password in `DB_PASSWORD` (e.g. `$3cur3-P@ssw0rd`). The app URL-encodes credentials when building the PostgreSQL URL so `@` does not break Alembic or the app (unencoded `@` was previously parsed as part of the hostname).
 
-**Keep PostgreSQL on localhost only** (default on Ubuntu: `listen_addresses = 'localhost'` in `postgresql.conf`). Do not expose `5432` to the internet; access from Windows is via **SSH tunnel** below.
+**Default:** keep PostgreSQL on **localhost** only (`listen_addresses = 'localhost'` in `postgresql.conf`). Access from Windows is usually via **SSH tunnel** ([Connect Power BI to PostgreSQL](#connect-power-bi-to-postgresql)). If you need a **direct** TCP connection (e.g. unattended refresh from a **fixed** public IP), use [§2.1](#21-optional-expose-postgresql-tcp-5432-restricted)—never open `5432` to the entire internet without a compensating control (VPN, strict firewall, or PostgreSQL SSL).
+
+### 2.1 Optional: expose PostgreSQL TCP 5432 (restricted)
+
+**Risk:** A reachable `5432` is a high-value target. **Do not** `ufw allow 5432/tcp` with no source filter (that exposes the port globally). Without PostgreSQL TLS (`hostssl` + certificates), passwords and data can traverse the network in **cleartext**; an **SSH tunnel** or **VPN** is usually safer than a raw `host` rule.
+
+Use a **single client IPv4** (or your office static range) everywhere below. Replace `203.0.113.50` with that address.
+
+1. **Listen on all interfaces** (firewall still limits who can connect). Ubuntu keeps config under `/etc/postgresql/<version>/main/`:
+
+   ```bash
+   PGMAIN=$(ls -d /etc/postgresql/*/main 2>/dev/null | head -1)
+   test -n "$PGMAIN" || { echo "PostgreSQL config dir not found"; exit 1; }
+   sudo sed -i "s/^#*listen_addresses.*/listen_addresses = '*'/" "$PGMAIN/postgresql.conf"
+   ```
+
+   Or edit `$PGMAIN/postgresql.conf` manually: set `listen_addresses = '*'`.
+
+2. **Allow only that client in `pg_hba.conf`** (append near the bottom, before any overly broad `host ... all ... 0.0.0.0/0` line if present). Reuse `PGMAIN` from step 1, or set it again: `PGMAIN=$(ls -d /etc/postgresql/*/main 2>/dev/null | head -1)`.
+
+   ```bash
+   echo "host    keap_db    keap_user    203.0.113.50/32    scram-sha-256" | sudo tee -a "$PGMAIN/pg_hba.conf"
+   ```
+
+   Use your real `DB_NAME` / `DB_USER` if they differ. **`listen_addresses` requires a full restart** (a reload is not enough for that setting):
+
+   ```bash
+   sudo systemctl restart postgresql
+   ```
+
+3. **UFW on the VPS:** allow **only** the client IP to reach `5432`:
+
+   ```bash
+   sudo ufw allow from 203.0.113.50 to any port 5432 proto tcp
+   sudo ufw status verbose
+   ```
+
+4. **Hostinger (or other) cloud firewall:** add an inbound rule for **TCP 5432** **from** that same IP (or range). If this layer is missing, the port may still be unreachable or accidentally wide open depending on the provider defaults.
+
+5. **Clients (e.g. Power BI):** use the VPS **public hostname or IP**, **port `5432`**, database `keap_db`, and your DB user/password. Expect TLS/certificate prompts unless you disable DB encryption or trust the server cert (see [Troubleshooting](#troubleshooting-windows-certificate-error-when-connecting-power-bi)). For **TLS to Postgres**, configure server SSL and switch the `pg_hba` line to `hostssl` per [PostgreSQL SSL](https://www.postgresql.org/docs/current/ssl-tcp.html).
+
+The extractor on the VPS keeps **`DB_HOST=localhost`** in `.env`; it does not need to use the public interface.
 
 ---
 
@@ -139,6 +180,32 @@ Pick **one** canonical URL, e.g. `https://srv1498298.hstgr.cloud/oauth/callback`
 
 ### 4.3 nginx and Let’s Encrypt
 
+**Before Certbot:** Let’s Encrypt must reach your VPS on **port 80** (HTTP-01 challenge). A **timeout** almost always means the Internet cannot open TCP 80 to this machine.
+
+1. **UFW on the VPS** (if enabled):
+
+   ```bash
+   sudo ufw allow OpenSSH
+   sudo ufw allow 80/tcp
+   sudo ufw allow 443/tcp
+   sudo ufw status verbose
+   ```
+
+   If `80/tcp` is missing, add it and run `sudo ufw reload` if needed.
+
+2. **Hostinger firewall (hPanel):** In **VPS → Firewall** (or **Security**), allow **inbound TCP 80** and **TCP 443** to this server. Hostinger often ships with a cloud firewall that blocks 80/443 even when UFW is open—both must allow traffic.
+
+3. **Quick checks on the VPS:**
+
+   ```bash
+   sudo systemctl enable --now nginx
+   curl -sI http://127.0.0.1/ | head -3
+   ```
+
+4. **From outside the VPS:** e.g. your PC’s browser opening `http://YOUR_VPS_IP/` or an online port checker on **TCP 80** for that IP. If it **times out**, Certbot will fail until inbound **80** (and later **443**) is allowed end-to-end.
+
+Then:
+
 ```bash
 sudo apt install -y nginx certbot python3-certbot-nginx
 sudo certbot --nginx -d srv1498298.hstgr.cloud
@@ -146,7 +213,13 @@ sudo certbot --nginx -d srv1498298.hstgr.cloud
 
 Replace `srv1498298.hstgr.cloud` with your **A record** or Hostinger hostname. Follow the prompts (email, agree to terms). Certbot will configure nginx for HTTPS.
 
-Add a **proxy** for the OAuth callback. Edit the server block Certbot created (often `/etc/nginx/sites-available/default` or a site under `sites-available/`):
+#### Certbot still fails after opening 80/443
+
+- Confirm DNS: `dig +short srv1498298.hstgr.cloud` should return your VPS IPv4.
+- Read logs: `sudo tail -50 /var/log/letsencrypt/letsencrypt.log`
+- **DNS challenge** (no port 80 needed): use a domain you control with a DNS API, or Hostinger DNS + `certbot certonly --manual --preferred-challenges dns -d your.domain` (add TXT record when prompted), then configure nginx to use the issued cert paths under `/etc/letsencrypt/live/`.
+
+Add a **proxy** for the OAuth callback. Edit the server block Certbot created (often `` or a site under `sites-available/`):
 
 ```nginx
 location /oauth/callback {
@@ -163,6 +236,52 @@ Then:
 ```bash
 sudo nginx -t && sudo systemctl reload nginx
 ```
+
+#### 404 on `https://your-host/oauth/callback` (nginx)
+
+If the browser shows **404 Not Found** from nginx after Keap redirects (URL contains `?code=...`), the **`location /oauth/callback` block is missing**, is in the **wrong** `server` block, or nginx was not reloaded.
+
+1. Put the block inside the **`server { ... }` that has `listen 443 ssl`** and `server_name srv1498298.hstgr.cloud` (your hostname). Certbot often creates a separate file, e.g.:
+
+   ```bash
+   ls /etc/nginx/sites-enabled/
+   sudo grep -r "listen 443" /etc/nginx/sites-enabled/
+   ```
+
+   Edit **that** file—not only the port-80 block.
+
+2. Example placement (inside the TLS server):
+
+   ```nginx
+   server {
+       listen 443 ssl;
+       server_name srv1498298.hstgr.cloud;
+       # ... ssl_certificate lines from certbot ...
+
+       location /oauth/callback {
+           proxy_pass http://127.0.0.1:8000;
+           proxy_set_header Host $host;
+           proxy_set_header X-Real-IP $remote_addr;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+           proxy_set_header X-Forwarded-Proto $scheme;
+       }
+
+       # other locations...
+   }
+   ```
+
+3. `sudo nginx -t && sudo systemctl reload nginx`
+
+4. **Run authorization again** from the app directory **while the callback server is listening**:
+
+   ```bash
+   cd /opt/keap-extract/app && source venv/bin/activate
+   python -m src.auth.authorize
+   ```
+
+   Then complete the flow in the browser. The previous `code=` in the URL is **single-use**; after a 404 you must start a **new** authorize run.
+
+5. **Order:** start `python -m src.auth.authorize` first (log shows *Starting callback server on port 8000*), **then** open the Keap URL. If nothing listens on `8000` when nginx proxies, you get **502 Bad Gateway** instead of 404.
 
 ### 4.4 `.env` on the VPS
 
@@ -225,7 +344,7 @@ ExecStart=/opt/keap-extract/app/venv/bin/python -m src --update
 Description=Daily Keap incremental extract
 
 [Timer]
-OnCalendar=*-*-* 02:30:00
+OnCalendar=*-*-* 00:00:00
 Persistent=true
 
 [Install]
@@ -265,14 +384,104 @@ ssh -N -L 15432:127.0.0.1:5432 YOUR_USER@YOUR_VPS_HOST
 5. **Data connectivity mode:** Import or DirectQuery as needed.
 6. Sign in with database user / password (`keap_user` / password you set).
 
-Optional: use **SSH key authentication** and `ssh-agent` so you are not prompted every time.
+### Troubleshooting: Windows certificate error when connecting (Power BI)
+
+**Symptom:** Power BI shows *Unable to connect* with details like *The remote certificate is invalid according to the validation procedure.*
+
+**Cause:** The PostgreSQL connector uses **TLS to the database** when encryption is on. You reach Postgres as `127.0.0.1` through an **SSH tunnel**, but the server’s certificate is almost always for the **VPS hostname** (or is self-signed). Windows then rejects it (name mismatch or untrusted issuer).
+
+**No TLS controls in the PostgreSQL dialog:** On **Power BI Desktop**, the **PostgreSQL database** dialog’s **Advanced options** only include command timeout, SQL statement, and navigation flags—**not** SSL or encryption. That matches [Microsoft’s PostgreSQL connector documentation](https://learn.microsoft.com/en-us/power-query/connectors/postgresql). Encryption is adjusted elsewhere (below).
+
+**Fix (recommended when you use an SSH tunnel):** The tunnel already encrypts traffic end-to-end. Use one of these:
+
+1. **Data source settings (most common)**  
+   **File** → **Options and settings** → **Data source settings** → select your PostgreSQL source → **Edit** (or edit permissions / connection as your build labels it). Find **Encrypt connection** (or equivalent) and **clear** it, then save and reconnect.
+
+2. **First-connection prompt**  
+   If Power BI shows a dialog that the connection is **not encrypted** or asks about encryption support, **OK** / proceed with an **unencrypted** database connection is appropriate when SSH is carrying the ciphertext.
+
+3. **ODBC fallback**  
+   If you still cannot disable encryption for that connector, use **Get data** → **ODBC** (install the [PostgreSQL ODBC driver](https://www.postgresql.org/ftp/odbc/versions/) if needed) and put `sslmode=disable` in the connection string (along with host `127.0.0.1`, port `15432`, database, user, password). Traffic remains protected by the SSH tunnel.
+
+**Also check:** The SSH tunnel is still running. If the dialog has **separate** Server and Port fields, use **Server** `127.0.0.1` and **Port** `15432`; if it only has one **Server** box, `127.0.0.1:15432` is valid for the Power Query `PostgreSQL.Database` function.
+
+### SSH keys and ssh-agent (Windows, fewer prompts)
+
+By default, `ssh` asks for your **VPS password** each time you start the tunnel. A **key pair** lets you authenticate without typing the password (or you type a **key passphrase** once per Windows session via the agent).
+
+#### 1. Create a key on the PC (once)
+
+PowerShell:
+
+```powershell
+ssh-keygen -t ed25519 -f $env:USERPROFILE\.ssh\id_ed25519_keap -C "powerbi-tunnel"
+```
+
+Press Enter for no passphrase (tunnel starts with no prompts), or set a passphrase (more secure; use step 3 so you only enter it once after login).
+
+#### 2. Install the public key on the VPS (once)
+
+Show the public key:
+
+```powershell
+Get-Content $env:USERPROFILE\.ssh\id_ed25519_keap.pub
+```
+
+On the VPS (as the Linux user you SSH as, not necessarily `root`):
+
+```bash
+mkdir -p ~/.ssh && chmod 700 ~/.ssh
+echo 'PASTE_THE_ONE_LINE_.pub_CONTENT_HERE' >> ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/authorized_keys
+```
+
+Or from the PC (if `ssh-copy-id` is available):
+
+```powershell
+type $env:USERPROFILE\.ssh\id_ed25519_keap.pub | ssh YOUR_USER@YOUR_VPS_HOST "mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
+```
+
+Ensure the VPS allows keys: in `/etc/ssh/sshd_config`, `PubkeyAuthentication yes` (default). Reload: `sudo systemctl reload ssh`.
+
+#### 3. ssh-agent (optional; for passphrase-protected keys)
+
+So you are not asked the **key** passphrase on every tunnel:
+
+```powershell
+Get-Service ssh-agent | Set-Service -StartupType Manual
+Start-Service ssh-agent
+ssh-add $env:USERPROFILE\.ssh\id_ed25519_keap
+```
+
+`ssh-add -l` lists loaded keys. After a reboot, run `Start-Service ssh-agent` and `ssh-add` again (or use a key with no passphrase and skip the agent).
+
+#### 4. Tunnel using the key
+
+```powershell
+ssh -N -L 15432:127.0.0.1:5432 -i $env:USERPROFILE\.ssh\id_ed25519_keap YOUR_USER@YOUR_VPS_HOST
+```
+
+Optional **`~/.ssh/config`** on the PC (`C:\Users\You\.ssh\config`) to shorten the command:
+
+```text
+Host keap-vps
+    HostName srv1498298.hstgr.cloud
+    User your_linux_user
+    IdentityFile ~/.ssh/id_ed25519_keap
+```
+
+Then:
+
+```powershell
+ssh -N -L 15432:127.0.0.1:5432 keap-vps
+```
 
 ### Alternatives (when to use)
 
 | Method | Use case |
 |--------|----------|
 | **VPN (e.g. WireGuard)** | Many internal services, multiple users, fixed office network. More moving parts on the VPS. |
-| **Locked-down DB** (`pg_hba` + firewall allow **only** your static public IP) | Unattended scheduled refresh without a tunnel; requires static IP and careful hardening. |
+| **Locked-down DB** (expose `5432` only to your IP: `pg_hba` + UFW + provider firewall; see [§2.1](#21-optional-expose-postgresql-tcp-5432-restricted)) | Unattended scheduled refresh without a tunnel; requires static IP and careful hardening. |
 
 For a single analyst and typical KVM 2 setup, **SSH tunnel + Import** (refresh when connected) is the simplest reliable path.
 
@@ -280,11 +489,11 @@ For a single analyst and typical KVM 2 setup, **SSH tunnel + Import** (refresh w
 
 ## Checklist
 
-- [ ] UFW: SSH allowed; Postgres **not** exposed publicly.
+- [ ] UFW: SSH allowed; Postgres **not** on the public internet **or** (if using [§2.1](#21-optional-expose-postgresql-tcp-5432-restricted)) `5432` allowed **only** from known client IP(s).
 - [ ] `.env` complete; `alembic upgrade head` applied.
 - [ ] Keap OAuth completed; tokens in DB.
 - [ ] Timer or cron for `--update` if needed.
-- [ ] Power BI connects via `127.0.0.1:15432` with SSH tunnel active.
+- [ ] Power BI connects via `127.0.0.1:15432` with SSH tunnel active (if certificate errors appear, disable DB encryption or trust server cert—see [Troubleshooting](#troubleshooting-windows-certificate-error-when-connecting-power-bi)).
 
 ---
 

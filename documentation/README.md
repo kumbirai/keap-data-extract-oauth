@@ -16,6 +16,7 @@ The project plan is organized into the following sections:
 8. **[Deployment Guide](08-deployment-guide.md)** - Deployment instructions and procedures
 9. **[Appendix](09-appendix.md)** - Reference materials and additional information
 10. **[VPS deployment (KVM 2)](vps-kvm2-deployment/README.md)** - Ubuntu + PostgreSQL + extractor; Power BI on Windows via SSH tunnel
+11. **[Stripe BI (PostgreSQL extension)](stripe/README.md)** - Stripe dimensions, facts, settlement, refunds; schema, extract integration, and reporting alongside Keap tables
 
 ## Quick Start
 

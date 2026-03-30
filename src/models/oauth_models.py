@@ -1,7 +1,7 @@
 """OAuth2 token and extraction state database models."""
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, Text, DateTime
-from sqlalchemy.dialects.postgresql import ENUM as PostgresEnum
+from sqlalchemy.dialects.postgresql import ENUM as PostgresEnum, JSONB
 from sqlalchemy.sql import func
 import enum
 
@@ -48,6 +48,7 @@ class ExtractionState(Base):
     extraction_status = Column(PostgresEnum(ExtractionStatus, name='extractionstatus', values_callable=lambda obj: [e.value for e in obj], create_type=False), default=ExtractionStatus.PENDING, index=True)
     error_count = Column(Integer, default=0)
     last_error_message = Column(Text)
+    checkpoint_json = Column(JSONB, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

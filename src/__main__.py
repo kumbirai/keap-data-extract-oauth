@@ -52,6 +52,12 @@ Examples:
     parser.add_argument('--update', action='store_true', help='Perform update operation using last_loaded timestamps')
     parser.add_argument('--entity-type', choices=LoaderFactory.get_supported_entity_types(), help='Type of entity to load')
     parser.add_argument('--entity-id', type=int, help='ID of specific entity to load')
+    parser.add_argument(
+        '--stripe-object-id',
+        type=str,
+        default=None,
+        help='Stripe object id (e.g. ch_...) when using --entity-type stripe_*',
+    )
     return parser.parse_args()
 
 
@@ -96,7 +102,8 @@ def main():
         load_data_main(
             update=args.update,
             entity_type=args.entity_type,
-            entity_id=args.entity_id
+            entity_id=args.entity_id,
+            stripe_object_id=args.stripe_object_id,
         )
         logger.info("Data loading completed successfully")
 

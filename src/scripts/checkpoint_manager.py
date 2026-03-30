@@ -11,6 +11,8 @@ from src.models.oauth_models import ExtractionState, ExtractionStatus
 
 logger = logging.getLogger(__name__)
 
+_CHECKPOINT_JSON_UNSET = object()
+
 
 class CheckpointManager:
     """Enhanced checkpoint manager supporting both file and database storage."""
@@ -82,6 +84,9 @@ class CheckpointManager:
                     extraction_state.extraction_status = ExtractionStatus.COMPLETED
                 else:
                     extraction_state.extraction_status = ExtractionStatus.IN_PROGRESS
+
+                if 'checkpoint_json' in checkpoint_data:
+                    extraction_state.checkpoint_json = checkpoint_data['checkpoint_json']
                 
                 extraction_state.updated_at = datetime.now(timezone.utc)
             else:
@@ -102,7 +107,8 @@ class CheckpointManager:
                     api_offset=checkpoint_data.get('api_offset', 0),
                     last_loaded=last_loaded,
                     last_successful_extraction=datetime.now(timezone.utc) if checkpoint_data.get('completed', False) else None,
-                    extraction_status=status
+                    extraction_status=status,
+                    checkpoint_json=checkpoint_data.get('checkpoint_json'),
                 )
                 self.db.add(extraction_state)
             
@@ -134,7 +140,8 @@ class CheckpointManager:
                     'completed': extraction_state.extraction_status == ExtractionStatus.COMPLETED,
                     'extraction_status': extraction_state.extraction_status.value,
                     'error_count': extraction_state.error_count,
-                    'last_error_message': extraction_state.last_error_message
+                    'last_error_message': extraction_state.last_error_message,
+                    'checkpoint_json': extraction_state.checkpoint_json,
                 }
         except Exception as e:
             logger.error(f"Error loading checkpoint from database for {entity_type}: {e}")
@@ -148,7 +155,8 @@ class CheckpointManager:
         api_offset: Optional[int] = None,
         completed: bool = False,
         error_count: int = 0,
-        last_error_message: Optional[str] = None
+        last_error_message: Optional[str] = None,
+        checkpoint_json: Any = _CHECKPOINT_JSON_UNSET,
     ) -> None:
         """Save checkpoint with total records processed and API offset.
         
@@ -159,6 +167,7 @@ class CheckpointManager:
             completed: Whether this entity type is fully loaded
             error_count: Number of errors encountered
             last_error_message: Last error message encountered
+            checkpoint_json: Optional JSON blob (e.g. Stripe cursors). If omitted, existing value is kept on update.
         """
         if entity_type not in self.checkpoints:
             self.checkpoints[entity_type] = {
@@ -186,6 +195,13 @@ class CheckpointManager:
         self.checkpoints[entity_type]['error_count'] = error_count
         if last_error_message:
             self.checkpoints[entity_type]['last_error_message'] = last_error_message
+
+        if checkpoint_json is not _CHECKPOINT_JSON_UNSET:
+            self.checkpoints[entity_type]['checkpoint_json'] = checkpoint_json
+        elif entity_type.startswith('stripe_') and self.db:
+            db_row = self._load_from_database(entity_type)
+            if db_row and db_row.get('checkpoint_json') is not None:
+                self.checkpoints[entity_type]['checkpoint_json'] = db_row['checkpoint_json']
 
         # Save to file with error handling
         try:
@@ -270,6 +286,14 @@ class CheckpointManager:
             if last_loaded:
                 params['since'] = last_loaded
         return params
+
+    def get_checkpoint_json(self, entity_type: str) -> Optional[Dict[str, Any]]:
+        """Return checkpoint_json for an entity type (database first, then file)."""
+        db_checkpoint = self._load_from_database(entity_type)
+        if db_checkpoint and db_checkpoint.get('checkpoint_json') is not None:
+            return db_checkpoint['checkpoint_json']
+        file_blob = self.checkpoints.get(entity_type, {}).get('checkpoint_json')
+        return file_blob
 
     def clear_checkpoints(self) -> None:
         """Clear all checkpoints from both file and database."""

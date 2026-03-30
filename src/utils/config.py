@@ -120,5 +120,9 @@ def get_config() -> dict:
         'token_refresh_threshold': int(get_env_var('TOKEN_REFRESH_THRESHOLD', required=False, default='300')),
         'log_level': get_env_var('LOG_LEVEL', required=False, default='INFO'),
         'batch_size': int(get_env_var('BATCH_SIZE', required=False, default='50')),
+        'stripe_api_key': (get_env_var('STRIPE_API_KEY', required=False, default='') or '').strip() or None,
+        'stripe_account_ids': (get_env_var('STRIPE_ACCOUNT_IDS', required=False, default='') or '').strip() or None,
+        'stripe_api_version': (get_env_var('STRIPE_API_VERSION', required=False, default='') or '').strip() or None,
+        'stripe_charge_lookback_days': int(get_env_var('STRIPE_CHARGE_LOOKBACK_DAYS', required=False, default='7')),
     }
 

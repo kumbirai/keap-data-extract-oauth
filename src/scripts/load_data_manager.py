@@ -66,7 +66,13 @@ class DataLoadManager:
         # Initialize checkpoint manager with database session
         self.checkpoint_manager = CheckpointManager(db_session=self.db)
 
-    def load_entity(self, entity_type: str, entity_id: Optional[int] = None, update: bool = False) -> LoadResult:
+    def load_entity(
+        self,
+        entity_type: str,
+        entity_id: Optional[int] = None,
+        update: bool = False,
+        stripe_object_id: Optional[str] = None,
+    ) -> LoadResult:
         """Load a specific entity type or individual entity.
         
         Args:
@@ -77,6 +83,20 @@ class DataLoadManager:
         Returns:
             LoadResult containing the operation statistics
         """
+        if stripe_object_id or (entity_id and entity_type and entity_type.startswith("stripe_")):
+            if not entity_type or not entity_type.startswith("stripe_"):
+                logger.error("--stripe-object-id requires a stripe_* --entity-type")
+                return LoadResult(1, 0, 1)
+            if stripe_object_id:
+                from src.stripe.orchestrator import run_stripe_object_by_id
+
+                try:
+                    return run_stripe_object_by_id(self.db, entity_type, stripe_object_id)
+                except Exception as e:
+                    logger.error("Stripe single-object load failed: %s", e, exc_info=True)
+                    return LoadResult(1, 0, 1)
+            logger.error("Stripe entities use string ids; pass --stripe-object-id (not --entity-id).")
+            return LoadResult(1, 0, 1)
         if entity_id:
             return self._load_single_entity(entity_type, entity_id)
         else:
@@ -128,6 +148,14 @@ class DataLoadManager:
             raise ValueError(f"Invalid entity_type: {entity_type}")
         
         try:
+            if entity_type.startswith("stripe_"):
+                from src.stripe.orchestrator import run_stripe_entity
+
+                try:
+                    return run_stripe_entity(self.db, self.checkpoint_manager, entity_type, update)
+                except RuntimeError as e:
+                    logger.error("Stripe load cannot run: %s", e)
+                    raise
             loader = LoaderFactory.create_loader(entity_type, self.client, self.db, self.checkpoint_manager)
             return loader.load_all(update=update)
         except ValueError as e:
@@ -177,6 +205,17 @@ class DataLoadManager:
                 # Continue with other entities instead of failing completely
                 total_result.failed_count += 1
 
+        try:
+            from src.stripe.orchestrator import run_stripe_extract
+
+            stripe_result = run_stripe_extract(self.db, self.checkpoint_manager, update)
+            total_result.total_records += stripe_result.total_records
+            total_result.success_count += stripe_result.success_count
+            total_result.failed_count += stripe_result.failed_count
+        except Exception as e:
+            logger.error("Stripe extract failed: %s", e, exc_info=True)
+            total_result.failed_count += 1
+
         return total_result
 
     def get_supported_entity_types(self) -> list:
@@ -205,7 +244,12 @@ class DataLoadManager:
         return False  # Don't suppress exceptions
 
 
-def main(update: bool = False, entity_type: str = None, entity_id: int = None):
+def main(
+    update: bool = False,
+    entity_type: str = None,
+    entity_id: int = None,
+    stripe_object_id: str = None,
+):
     """Main function to perform the data load.
     
     This simplified main function replaces the original 100+ line function
@@ -222,7 +266,9 @@ def main(update: bool = False, entity_type: str = None, entity_id: int = None):
             logger.info("Starting full data load...")
 
         # Load data based on parameters
-        if entity_type and entity_id:
+        if entity_type and stripe_object_id:
+            result = manager.load_entity(entity_type, update=update, stripe_object_id=stripe_object_id)
+        elif entity_type and entity_id:
             result = manager.load_entity(entity_type, entity_id, update)
         elif entity_type:
             result = manager.load_entity(entity_type, update=update)
@@ -239,7 +285,7 @@ def main(update: bool = False, entity_type: str = None, entity_id: int = None):
         logger.info(f"Failed to process: {result.failed_count}")
 
         # Run error reprocessing after main data load
-        if not entity_id:
+        if not entity_id and not stripe_object_id:
             try:
                 from src.scripts.reprocess_errors import ErrorReprocessor
                 reprocessor = ErrorReprocessor()
@@ -262,8 +308,19 @@ if __name__ == "__main__":
     parser.add_argument('--update', action='store_true', help='Perform update operation using last_loaded timestamps')
     parser.add_argument('--entity-type', choices=LoaderFactory.get_supported_entity_types(), help='Type of entity to load')
     parser.add_argument('--entity-id', type=int, help='ID of specific entity to load')
+    parser.add_argument(
+        '--stripe-object-id',
+        type=str,
+        default=None,
+        help='Stripe object id (e.g. ch_...) when using --entity-type stripe_*',
+    )
 
     args = parser.parse_args()
 
-    main(update=args.update, entity_type=args.entity_type, entity_id=args.entity_id)
+    main(
+        update=args.update,
+        entity_type=args.entity_type,
+        entity_id=args.entity_id,
+        stripe_object_id=args.stripe_object_id,
+    )
 

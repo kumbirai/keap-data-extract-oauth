@@ -83,7 +83,12 @@ class AuditLogger:
                     f"Failed={failed}, Duration={duration_str}")
 
 
-def main(update: bool = False, entity_type: str = None, entity_id: int = None):
+def main(
+    update: bool = False,
+    entity_type: str = None,
+    entity_id: int = None,
+    stripe_object_id: str = None,
+):
     """Main function to perform the data load with audit logging.
     
     Args:
@@ -106,7 +111,14 @@ def main(update: bool = False, entity_type: str = None, entity_id: int = None):
                 logger.info("Starting full data load...")
 
             # Load data based on parameters
-            if entity_type and entity_id:
+            if entity_type and stripe_object_id:
+                result = manager.load_entity(
+                    entity_type,
+                    update=update,
+                    stripe_object_id=stripe_object_id,
+                )
+                entity_key = f"{entity_type}_stripe_object"
+            elif entity_type and entity_id:
                 result = manager.load_entity(entity_type, entity_id, update)
                 entity_key = f"{entity_type}_single"
             elif entity_type:
@@ -136,7 +148,7 @@ def main(update: bool = False, entity_type: str = None, entity_id: int = None):
             )
 
             # Run error reprocessing after main data load
-            if not entity_id:
+            if not entity_id and not stripe_object_id:
                 try:
                     from src.scripts.reprocess_errors import ErrorReprocessor
                     reprocessor = ErrorReprocessor()
@@ -159,8 +171,19 @@ if __name__ == "__main__":
     parser.add_argument('--update', action='store_true', help='Perform update operation using last_loaded timestamps')
     parser.add_argument('--entity-type', choices=LoaderFactory.get_supported_entity_types(), help='Type of entity to load')
     parser.add_argument('--entity-id', type=int, help='ID of specific entity to load')
+    parser.add_argument(
+        '--stripe-object-id',
+        type=str,
+        default=None,
+        help='Stripe object id (e.g. ch_...) with --entity-type stripe_*',
+    )
 
     args = parser.parse_args()
 
-    main(update=args.update, entity_type=args.entity_type, entity_id=args.entity_id)
+    main(
+        update=args.update,
+        entity_type=args.entity_type,
+        entity_id=args.entity_id,
+        stripe_object_id=args.stripe_object_id,
+    )
 

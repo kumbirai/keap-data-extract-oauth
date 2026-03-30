@@ -23,6 +23,8 @@ from .subscription_loader import SubscriptionLoader
 from .tags_loader import TagsLoader
 from .task_loader import TaskLoader
 
+from src.stripe.constants import STRIPE_ENTITY_TYPES
+
 
 class LoaderFactory:
     """Factory class to create appropriate loaders for different entity types.
@@ -80,7 +82,8 @@ class LoaderFactory:
         """Get list of all supported entity types."""
         specialized_types = list(cls._loaders.keys())
         method_types = list(cls._get_method_mapping().keys())
-        return list(set(specialized_types + method_types))
+        combined = set(specialized_types + method_types + list(STRIPE_ENTITY_TYPES))
+        return sorted(combined)
 
 
 # Register specialized loaders

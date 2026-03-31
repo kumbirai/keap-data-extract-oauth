@@ -11,7 +11,7 @@ from typing import Any, Dict
 from sqlalchemy.orm import Session
 
 from src.api.keap_client import KeapClient
-from src.models.models import Affiliate, PaymentGateway
+from src.models.models import Affiliate, Contact, PaymentGateway
 from .affiliate_loader import AffiliateLoader
 from .base_loader import BaseEntityLoader
 
@@ -75,6 +75,8 @@ class OrderLoader(BaseEntityLoader):
         if hasattr(order, 'transactions'):
             order.transactions = []
             for transaction in transactions:
+                if hasattr(transaction, 'contact_id') and transaction.contact_id:
+                    self._ensure_entity_exists(Contact, transaction.contact_id)
                 order.transactions.append(transaction)
 
         if hasattr(order, 'payment_plan') and payment_plan:
@@ -95,6 +97,10 @@ class OrderLoader(BaseEntityLoader):
 
         # Handle affiliate references
         self._handle_affiliate_references(order)
+
+        # Ensure order's contact FK target exists
+        if hasattr(order, 'contact_id') and order.contact_id:
+            self._ensure_entity_exists(Contact, order.contact_id)
 
         # Handle credit card references (for payment plans)
         if payment_plan and hasattr(payment_plan, 'credit_card_id'):
@@ -134,6 +140,11 @@ class OrderLoader(BaseEntityLoader):
                 # Extract payment gateway data from the original data
                 gateway_data = payment_plan_data.get('payment_gateway', {})
             
+            # Normalize merchant_account_id=0 to None (0 is not a valid FK reference)
+            if payment_plan.merchant_account_id == 0:
+                logger.debug(f"Payment plan for order {order_id} has merchant_account_id=0, setting to None")
+                payment_plan.merchant_account_id = None
+
             # Handle payment gateway relationship
             if payment_plan.merchant_account_id:
                 try:

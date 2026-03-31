@@ -6,11 +6,12 @@ body content, and custom field values that need special handling.
 """
 
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from sqlalchemy.orm import Session
 
 from src.api.keap_client import KeapClient
+from src.models.entity_models import NoteType
 from src.models.models import Contact
 from .base_loader import BaseEntityLoader
 
@@ -61,40 +62,35 @@ class NoteLoader(BaseEntityLoader):
             note.custom_field_values = note.custom_field_values
 
     def _ensure_contacts_exist(self, contacts: list) -> None:
-        """Ensure all referenced contacts exist in the database.
-        
-        This method checks if the contacts associated with a note
-        exist in the database and logs warnings for any missing contacts.
-        """
+        """Ensure all referenced contacts exist in the database, creating stubs if needed."""
         if not contacts:
             return
-
         for contact in contacts:
-            try:
-                # Check if contact exists in database
-                existing_contact = self.db.query(Contact).filter(Contact.id == contact.id).first()
-
-                if existing_contact is None:
-                    logger.warning(f"Contact ID {contact.id} referenced by note not found in database")
-                else:
-                    logger.debug(f"Contact ID {contact.id} exists in database")
-
-            except Exception as e:
-                logger.error(f"Error checking contact ID {contact.id}: {str(e)}")
+            if not getattr(contact, 'id', None):
+                continue
+            self._ensure_entity_exists(Contact, contact.id)
 
     def _ensure_primary_contact_exists(self, contact_id: int) -> None:
-        """Ensure the primary contact for a note exists in the database."""
-        try:
-            # Check if primary contact exists in database
-            existing_contact = self.db.query(Contact).filter(Contact.id == contact_id).first()
+        """Ensure the primary contact for a note exists in the database, creating a stub if needed."""
+        self._ensure_entity_exists(Contact, contact_id)
 
-            if existing_contact is None:
-                logger.warning(f"Primary contact ID {contact_id} for note not found in database")
-            else:
-                logger.debug(f"Primary contact ID {contact_id} exists in database")
-
-        except Exception as e:
-            logger.error(f"Error checking primary contact ID {contact_id}: {str(e)}")
+    def _normalize_note_type(self, raw_type: Any) -> Optional[NoteType]:
+        """Convert a raw type value to a NoteType enum member, or None if unrecognized."""
+        if raw_type is None:
+            return None
+        if isinstance(raw_type, NoteType):
+            return raw_type
+        # Exact value match
+        for member in NoteType:
+            if member.value == raw_type:
+                return member
+        # Case-insensitive value match
+        raw_upper = str(raw_type).upper()
+        for member in NoteType:
+            if member.value.upper() == raw_upper:
+                return member
+        logger.warning(f"Unrecognized note type '{raw_type}' - setting to None")
+        return None
 
     def _process_note_attributes(self, note: Any) -> None:
         """Process and validate note-specific attributes.
@@ -102,10 +98,12 @@ class NoteLoader(BaseEntityLoader):
         This method handles note type, title, and other attributes
         with appropriate validation and logging.
         """
-        # Log note type information
-        if hasattr(note, 'type') and note.type:
-            logger.debug(f"Processing note {note.id} with type: {note.type}")
-            self._validate_note_type(note.type)
+        # Normalize note type to enum member (or None if unrecognized)
+        if hasattr(note, 'type'):
+            normalized = self._normalize_note_type(note.type)
+            if normalized != note.type:
+                logger.debug(f"Note {note.id}: normalizing type '{note.type}' -> {normalized}")
+            note.type = normalized
 
         # Log title information
         if hasattr(note, 'title') and note.title:
@@ -119,15 +117,6 @@ class NoteLoader(BaseEntityLoader):
 
         if hasattr(note, 'modified_at') and note.modified_at:
             logger.debug(f"Note {note.id} was modified on: {note.modified_at}")
-
-    def _validate_note_type(self, note_type: str) -> None:
-        """Validate note type against known types."""
-        valid_types = ['Call', 'Email', 'Fax', 'Letter', 'Meeting', 'Other', 'Task', 'SMS', 'Social', 'Chat', 'Voicemail', 'Website', 'Form', 'Appointment', 'Campaign', 'Contact', 'Deal', 'Document',
-                       'File', 'Follow Up', 'Invoice', 'Order', 'Product', 'Purchase', 'Recurring Order', 'Referral', 'Refund', 'Subscription', 'Survey', 'Tag', 'Template', 'Transaction', 'User',
-                       'Webform', 'Workflow']
-
-        if note_type not in valid_types:
-            logger.warning(f"Unknown note type: {note_type}")
 
     def _process_note_content(self, note: Any) -> None:
         """Process note content like body text."""

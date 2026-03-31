@@ -777,14 +777,13 @@ def transform_order_transaction(api_data: Dict[str, Any]) -> OrderTransaction:
 def transform_note(api_data: Dict[str, Any]) -> Note:
     """Transform API data to Note model."""
     note_type = safe_enum_convert(api_data.get('type'), NoteType)
-    type_value = note_type.value if note_type else None
 
     return Note(
         id=api_data.get('id'),
         contact_id=api_data.get('contact_id'),
         title=api_data.get('title'),
         body=api_data.get('body'),
-        type=type_value,
+        type=note_type,
         created_at=safe_parse_datetime(api_data.get('created_at')),
         modified_at=safe_parse_datetime(api_data.get('modified_at'))
     )

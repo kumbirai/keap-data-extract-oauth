@@ -8,7 +8,7 @@ code duplication through abstraction and common patterns.
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Type
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -242,6 +242,42 @@ class EntityLoader(ABC):
     def _get_item_error_data(self, item: Any) -> Dict:
         """Get additional data for error logging. Override in subclasses."""
         return {}
+
+    def _ensure_entity_exists(self, model_class: Type, entity_id: Any, **kwargs) -> bool:
+        """Ensure an entity exists in the DB; create a minimal stub if not found.
+
+        Args:
+            model_class: SQLAlchemy model class to query/create.
+            entity_id: Primary key value. 0 and None are treated as "no reference".
+            **kwargs: Extra fields to include on a newly created stub.
+
+        Returns:
+            True if entity already existed or was successfully created.
+            False if entity_id is falsy, or creation failed.
+        """
+        if not entity_id:
+            return False
+
+        try:
+            existing = self.db.query(model_class).filter(model_class.id == entity_id).first()
+            if existing is not None:
+                logger.debug(f"{model_class.__name__} ID {entity_id} already exists")
+                return True
+
+            logger.info(f"{model_class.__name__} ID {entity_id} not found - creating stub record")
+            stub = model_class(id=entity_id, **kwargs)
+            self.db.merge(stub)
+            self.db.commit()
+            logger.info(f"Created stub {model_class.__name__} ID {entity_id}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Error ensuring {model_class.__name__} ID {entity_id} exists: {e}")
+            try:
+                self.db.rollback()
+            except Exception:
+                pass
+            return False
 
 
 class BaseEntityLoader(EntityLoader):

@@ -41,6 +41,9 @@ Examples:
   # Extract specific entity type
   python -m src --entity-type contacts
 
+  # All Stripe BI entities only (skips Keap when used alone)
+  python -m src --entity-type stripe_all
+
   # Extract single entity by ID
   python -m src --entity-type contacts --entity-id 12345
 

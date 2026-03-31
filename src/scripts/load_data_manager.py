@@ -156,6 +156,14 @@ class DataLoadManager:
                 except RuntimeError as e:
                     logger.error("Stripe load cannot run: %s", e)
                     raise
+            if entity_type.startswith("revolut_"):
+                from src.revolut.orchestrator import run_revolut_entity
+
+                try:
+                    return run_revolut_entity(self.db, self.checkpoint_manager, entity_type, update)
+                except RuntimeError as e:
+                    logger.error("Revolut load cannot run: %s", e)
+                    raise
             loader = LoaderFactory.create_loader(entity_type, self.client, self.db, self.checkpoint_manager)
             return loader.load_all(update=update)
         except ValueError as e:
@@ -214,6 +222,17 @@ class DataLoadManager:
             total_result.failed_count += stripe_result.failed_count
         except Exception as e:
             logger.error("Stripe extract failed: %s", e, exc_info=True)
+            total_result.failed_count += 1
+
+        try:
+            from src.revolut.orchestrator import run_revolut_extract
+
+            revolut_result = run_revolut_extract(self.db, self.checkpoint_manager, update)
+            total_result.total_records += revolut_result.total_records
+            total_result.success_count += revolut_result.success_count
+            total_result.failed_count += revolut_result.failed_count
+        except Exception as e:
+            logger.error("Revolut extract failed: %s", e, exc_info=True)
             total_result.failed_count += 1
 
         return total_result

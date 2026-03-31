@@ -17,6 +17,7 @@ The project plan is organized into the following sections:
 9. **[Appendix](09-appendix.md)** - Reference materials and additional information
 10. **[VPS deployment (KVM 2)](vps-kvm2-deployment/README.md)** - Ubuntu + PostgreSQL + extractor; Power BI on Windows via SSH tunnel
 11. **[Stripe BI (PostgreSQL extension)](stripe/README.md)** - Stripe dimensions, facts, settlement, refunds; schema, extract integration, and reporting alongside Keap tables
+12. **[Revolut BI (PostgreSQL extension)](revolut/README.md)** - Revolut Business accounts and transactions; accepted payments reporting, fees/charges, access keys, and reporting alongside Keap and optional Stripe
 
 ## Quick Start
 

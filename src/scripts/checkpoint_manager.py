@@ -198,7 +198,7 @@ class CheckpointManager:
 
         if checkpoint_json is not _CHECKPOINT_JSON_UNSET:
             self.checkpoints[entity_type]['checkpoint_json'] = checkpoint_json
-        elif entity_type.startswith('stripe_') and self.db:
+        elif (entity_type.startswith('stripe_') or entity_type.startswith('revolut_')) and self.db:
             db_row = self._load_from_database(entity_type)
             if db_row and db_row.get('checkpoint_json') is not None:
                 self.checkpoints[entity_type]['checkpoint_json'] = db_row['checkpoint_json']

@@ -5,6 +5,9 @@ from src.models.base import Base
 # Import OAuth models to register them with Base
 from src.models.oauth_models import OAuthToken, ExtractionState
 
+# Revolut BI tables
+from src.models.revolut_models import RevolutAccount, RevolutTransaction
+
 # Stripe BI tables
 from src.models.stripe_models import (
     StripeBalanceTransaction,
@@ -36,6 +39,7 @@ from src.models.entity_models import (
 
 __all__ = [
     'Base', 'OAuthToken', 'ExtractionState',
+    'RevolutAccount', 'RevolutTransaction',
     'StripeBalanceTransaction', 'StripeCharge', 'StripeCoupon', 'StripeInvoice',
     'StripePaymentIntent', 'StripePayout', 'StripePrice', 'StripeProduct',
     'StripeRefund', 'StripeSubscription', 'StripeTransfer',

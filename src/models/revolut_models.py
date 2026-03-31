@@ -1,15 +1,9 @@
 """SQLAlchemy models for Revolut BI tables (see documentation/revolut/02-schema-design.md)."""
-from datetime import datetime, timezone
-
 from sqlalchemy import BigInteger, Column, DateTime, Index, Text
 
 from sqlalchemy.dialects.postgresql import JSONB
 
 from src.models.base import Base
-
-
-def utc_now():
-    return datetime.now(timezone.utc)
 
 
 class RevolutAccount(Base):
@@ -53,4 +47,11 @@ class RevolutTransaction(Base):
     loaded_at = Column(DateTime(timezone=True), nullable=True)
     updated_at = Column(DateTime(timezone=True), nullable=True)
 
-    __table_args__ = (Index("ix_revolut_transactions_account_created", "account_id", "created_at"),)
+    __table_args__ = (
+        Index(
+            "ix_revolut_transactions_account_created",
+            "account_id",
+            "created_at",
+            postgresql_ops={"created_at": "DESC"},
+        ),
+    )

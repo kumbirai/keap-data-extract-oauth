@@ -42,6 +42,20 @@ def test_compute_window_incremental_with_watermark():
     assert wt == now.astimezone(timezone.utc)
 
 
+def test_compute_window_update_mode_without_watermark_uses_initial_span():
+    """Incremental flag with no prior high-water falls back to full initial history window."""
+    now = datetime(2026, 6, 1, 12, 0, 0, tzinfo=timezone.utc)
+    wf, wt = compute_transaction_window(
+        update=True,
+        state={},
+        lookback_days=7,
+        initial_history_days=90,
+        now=now,
+    )
+    assert wt == now.astimezone(timezone.utc)
+    assert (wt - wf).days == 90
+
+
 def test_next_pagination_to_full_page():
     items = [{"created_at": "2026-01-01T00:00:00Z"}] * 3
     assert next_pagination_to(items, count=3) == "2026-01-01T00:00:00Z"

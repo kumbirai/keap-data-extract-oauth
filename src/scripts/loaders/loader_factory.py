@@ -24,7 +24,7 @@ from .tags_loader import TagsLoader
 from .task_loader import TaskLoader
 
 from src.revolut.constants import REVOLUT_ENTITY_TYPES
-from src.stripe.constants import STRIPE_ENTITY_TYPES
+from src.stripe.constants import STRIPE_ALL_ENTITY_TYPE, STRIPE_ENTITY_TYPES
 
 
 class LoaderFactory:
@@ -84,7 +84,11 @@ class LoaderFactory:
         specialized_types = list(cls._loaders.keys())
         method_types = list(cls._get_method_mapping().keys())
         combined = set(
-            specialized_types + method_types + list(STRIPE_ENTITY_TYPES) + list(REVOLUT_ENTITY_TYPES)
+            specialized_types
+            + method_types
+            + list(STRIPE_ENTITY_TYPES)
+            + [STRIPE_ALL_ENTITY_TYPE]
+            + list(REVOLUT_ENTITY_TYPES)
         )
         return sorted(combined)
 

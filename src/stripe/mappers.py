@@ -268,6 +268,177 @@ def map_payout(obj: Any, stripe_account_id: Optional[str], now: datetime, store_
     return row
 
 
+def _child_base_row(
+    obj: Any,
+    stripe_account_id: Optional[str],
+    now: datetime,
+    store_raw: bool,
+) -> Dict[str, Any]:
+    row = _base_row(obj, stripe_account_id, now, store_raw)
+    row.pop("raw_payload", None)
+    return row
+
+
+def map_customer(obj: Any, stripe_account_id: Optional[str], now: datetime, store_raw: bool) -> Dict[str, Any]:
+    row = _base_row(obj, stripe_account_id, now, store_raw)
+    row.update(
+        {
+            "id": obj.id,
+            "email": (getattr(obj, "email", None) or None),
+            "name": (getattr(obj, "name", None) or None),
+            "phone": (getattr(obj, "phone", None) or None),
+            "description": (getattr(obj, "description", None) or None),
+            "currency": _currency_code(obj),
+            "balance": getattr(obj, "balance", None),
+            "delinquent": getattr(obj, "delinquent", None),
+            "created": _unix_ts(getattr(obj, "created", None)),
+            "default_source": _stripe_id(getattr(obj, "default_source", None)),
+            "invoice_prefix": (getattr(obj, "invoice_prefix", None) or None),
+            "tax_exempt": getattr(obj, "tax_exempt", None) or None,
+        }
+    )
+    return row
+
+
+def map_invoice_line_item(
+    obj: Any,
+    stripe_account_id: Optional[str],
+    now: datetime,
+    store_raw: bool,
+    *,
+    invoice_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    row = _child_base_row(obj, stripe_account_id, now, store_raw)
+    period = getattr(obj, "period", None)
+    amt = getattr(obj, "amount", None)
+    if amt is None:
+        raise ValueError("invoice line item missing amount")
+    row.update(
+        {
+            "id": obj.id,
+            "invoice_id": invoice_id or _stripe_id(getattr(obj, "invoice", None)) or "",
+            "subscription_id": _stripe_id(getattr(obj, "subscription", None)),
+            "subscription_item_id": _stripe_id(getattr(obj, "subscription_item", None)),
+            "price_id": _stripe_id(getattr(obj, "price", None)),
+            "product_id": _stripe_id(getattr(getattr(obj, "price", None), "product", None)),
+            "quantity": getattr(obj, "quantity", None),
+            "amount": int(amt),
+            "currency": _require_currency(obj),
+            "description": (getattr(obj, "description", None) or None),
+            "period_start": _unix_ts(getattr(period, "start", None)) if period else None,
+            "period_end": _unix_ts(getattr(period, "end", None)) if period else None,
+            "type": getattr(obj, "type", None) or None,
+            "proration": getattr(obj, "proration", None),
+        }
+    )
+    if not row["invoice_id"]:
+        raise ValueError("invoice line item missing invoice_id")
+    return row
+
+
+def map_subscription_item(
+    obj: Any,
+    stripe_account_id: Optional[str],
+    now: datetime,
+    store_raw: bool,
+    *,
+    subscription_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    row = _child_base_row(obj, stripe_account_id, now, store_raw)
+    sid = subscription_id or _stripe_id(getattr(obj, "subscription", None)) or ""
+    row.update(
+        {
+            "id": obj.id,
+            "subscription_id": sid,
+            "price_id": _stripe_id(getattr(obj, "price", None)),
+            "product_id": _stripe_id(getattr(getattr(obj, "price", None), "product", None)),
+            "quantity": getattr(obj, "quantity", None),
+            "created": _unix_ts(getattr(obj, "created", None)),
+        }
+    )
+    if not row["subscription_id"]:
+        raise ValueError("subscription item missing subscription_id")
+    return row
+
+
+def map_dispute(obj: Any, stripe_account_id: Optional[str], now: datetime, store_raw: bool) -> Dict[str, Any]:
+    ch = _stripe_id(getattr(obj, "charge", None))
+    if not ch:
+        raise ValueError("dispute missing charge_id")
+    ed = getattr(obj, "evidence_details", None)
+    amt = getattr(obj, "amount", None)
+    if amt is None:
+        raise ValueError("dispute missing amount")
+    row = _base_row(obj, stripe_account_id, now, store_raw)
+    row.update(
+        {
+            "id": obj.id,
+            "charge_id": ch,
+            "payment_intent_id": _stripe_id(getattr(obj, "payment_intent", None)),
+            "amount": int(amt),
+            "currency": _require_currency(obj),
+            "status": getattr(obj, "status", None) or None,
+            "reason": getattr(obj, "reason", None) or None,
+            "created": _unix_ts(getattr(obj, "created", None)),
+            "evidence_due_by": _unix_ts(getattr(ed, "due_by", None)) if ed else None,
+            "is_charge_refundable": getattr(obj, "is_charge_refundable", None),
+        }
+    )
+    return row
+
+
+def map_promotion_code(obj: Any, stripe_account_id: Optional[str], now: datetime, store_raw: bool) -> Dict[str, Any]:
+    cpn = _stripe_id(getattr(obj, "coupon", None))
+    if not cpn:
+        raise ValueError("promotion code missing coupon_id")
+    r = getattr(obj, "restrictions", None)
+    row = _base_row(obj, stripe_account_id, now, store_raw)
+    row.update(
+        {
+            "id": obj.id,
+            "code": (getattr(obj, "code", None) or None),
+            "coupon_id": cpn,
+            "customer_id": _stripe_id(getattr(obj, "customer", None)),
+            "active": getattr(obj, "active", None),
+            "created": _unix_ts(getattr(obj, "created", None)),
+            "expires_at": _unix_ts(getattr(obj, "expires_at", None)),
+            "max_redemptions": getattr(obj, "max_redemptions", None),
+            "times_redeemed": getattr(obj, "times_redeemed", None),
+            "restrictions_minimum_amount": getattr(r, "minimum_amount", None) if r else None,
+            "restrictions_minimum_amount_currency": getattr(r, "minimum_amount_currency", None) if r else None,
+            "restrictions_first_time_transaction": getattr(r, "first_time_transaction", None) if r else None,
+        }
+    )
+    return row
+
+
+def map_credit_note(obj: Any, stripe_account_id: Optional[str], now: datetime, store_raw: bool) -> Dict[str, Any]:
+    inv = _stripe_id(getattr(obj, "invoice", None))
+    if not inv:
+        raise ValueError("credit note missing invoice_id")
+    row = _base_row(obj, stripe_account_id, now, store_raw)
+    amt = getattr(obj, "amount", None)
+    if amt is None:
+        raise ValueError("credit note missing amount")
+    row.update(
+        {
+            "id": obj.id,
+            "invoice_id": inv,
+            "customer_id": _stripe_id(getattr(obj, "customer", None)),
+            "amount": int(amt),
+            "currency": _require_currency(obj),
+            "status": getattr(obj, "status", None) or None,
+            "type": getattr(obj, "type", None) or None,
+            "reason": getattr(obj, "reason", None) or None,
+            "memo": (getattr(obj, "memo", None) or None),
+            "out_of_band_amount": getattr(obj, "out_of_band_amount", None),
+            "refund_id": _stripe_id(getattr(obj, "refund", None)),
+            "created": _unix_ts(getattr(obj, "created", None)),
+        }
+    )
+    return row
+
+
 def map_transfer(obj: Any, stripe_account_id: Optional[str], now: datetime, store_raw: bool) -> Dict[str, Any]:
     api_status = getattr(obj, "status", None)
     if isinstance(api_status, str) and api_status.strip():

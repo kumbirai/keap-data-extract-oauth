@@ -228,3 +228,126 @@ class StripeTransfer(Base):
     stripe_account_id = Column(Text, nullable=True, index=True)
     loaded_at = Column(DateTime(timezone=True), nullable=True)
     updated_at = Column(DateTime(timezone=True), nullable=True)
+
+
+class StripeCustomer(Base):
+    __tablename__ = "stripe_customers"
+
+    id = Column(Text, primary_key=True)
+    email = Column(Text, nullable=True, index=True)
+    name = Column(Text, nullable=True)
+    phone = Column(Text, nullable=True)
+    description = Column(Text, nullable=True)
+    currency = Column(Text, nullable=True)
+    balance = Column(Integer, nullable=True)
+    delinquent = Column(Boolean, nullable=True, index=True)
+    created = Column(DateTime(timezone=True), nullable=True, index=True)
+    default_source = Column(Text, nullable=True)
+    invoice_prefix = Column(Text, nullable=True)
+    tax_exempt = Column(Text, nullable=True)
+    metadata_col = Column("metadata", JSONB, nullable=True)
+    raw_payload = Column(JSONB, nullable=True)
+    stripe_account_id = Column(Text, nullable=True, index=True)
+    loaded_at = Column(DateTime(timezone=True), nullable=True)
+    updated_at = Column(DateTime(timezone=True), nullable=True)
+
+
+class StripeInvoiceLineItem(Base):
+    __tablename__ = "stripe_invoice_line_items"
+
+    id = Column(Text, primary_key=True)
+    invoice_id = Column(Text, nullable=False, index=True)
+    subscription_id = Column(Text, nullable=True, index=True)
+    subscription_item_id = Column(Text, nullable=True)
+    price_id = Column(Text, nullable=True, index=True)
+    product_id = Column(Text, nullable=True, index=True)
+    quantity = Column(Integer, nullable=True)
+    amount = Column(Integer, nullable=False)
+    currency = Column(Text, nullable=False)
+    description = Column(Text, nullable=True)
+    period_start = Column(DateTime(timezone=True), nullable=True)
+    period_end = Column(DateTime(timezone=True), nullable=True)
+    type = Column(Text, nullable=True, index=True)
+    proration = Column(Boolean, nullable=True)
+    metadata_col = Column("metadata", JSONB, nullable=True)
+    stripe_account_id = Column(Text, nullable=True, index=True)
+    loaded_at = Column(DateTime(timezone=True), nullable=True)
+    updated_at = Column(DateTime(timezone=True), nullable=True)
+
+
+class StripeSubscriptionItem(Base):
+    __tablename__ = "stripe_subscription_items"
+
+    id = Column(Text, primary_key=True)
+    subscription_id = Column(Text, nullable=False, index=True)
+    price_id = Column(Text, nullable=True, index=True)
+    product_id = Column(Text, nullable=True, index=True)
+    quantity = Column(Integer, nullable=True)
+    created = Column(DateTime(timezone=True), nullable=True)
+    metadata_col = Column("metadata", JSONB, nullable=True)
+    stripe_account_id = Column(Text, nullable=True, index=True)
+    loaded_at = Column(DateTime(timezone=True), nullable=True)
+    updated_at = Column(DateTime(timezone=True), nullable=True)
+
+
+class StripeDispute(Base):
+    __tablename__ = "stripe_disputes"
+
+    id = Column(Text, primary_key=True)
+    charge_id = Column(Text, nullable=False, index=True)
+    payment_intent_id = Column(Text, nullable=True)
+    amount = Column(Integer, nullable=False)
+    currency = Column(Text, nullable=False)
+    status = Column(Text, nullable=True, index=True)
+    reason = Column(Text, nullable=True)
+    created = Column(DateTime(timezone=True), nullable=True, index=True)
+    evidence_due_by = Column(DateTime(timezone=True), nullable=True, index=True)
+    is_charge_refundable = Column(Boolean, nullable=True)
+    metadata_col = Column("metadata", JSONB, nullable=True)
+    raw_payload = Column(JSONB, nullable=True)
+    stripe_account_id = Column(Text, nullable=True, index=True)
+    loaded_at = Column(DateTime(timezone=True), nullable=True)
+    updated_at = Column(DateTime(timezone=True), nullable=True)
+
+
+class StripePromotionCode(Base):
+    __tablename__ = "stripe_promotion_codes"
+
+    id = Column(Text, primary_key=True)
+    code = Column(Text, nullable=True, index=True)
+    coupon_id = Column(Text, nullable=False, index=True)
+    customer_id = Column(Text, nullable=True, index=True)
+    active = Column(Boolean, nullable=True, index=True)
+    created = Column(DateTime(timezone=True), nullable=True)
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+    max_redemptions = Column(Integer, nullable=True)
+    times_redeemed = Column(Integer, nullable=True)
+    restrictions_minimum_amount = Column(Integer, nullable=True)
+    restrictions_minimum_amount_currency = Column(Text, nullable=True)
+    restrictions_first_time_transaction = Column(Boolean, nullable=True)
+    metadata_col = Column("metadata", JSONB, nullable=True)
+    stripe_account_id = Column(Text, nullable=True, index=True)
+    loaded_at = Column(DateTime(timezone=True), nullable=True)
+    updated_at = Column(DateTime(timezone=True), nullable=True)
+
+
+class StripeCreditNote(Base):
+    __tablename__ = "stripe_credit_notes"
+
+    id = Column(Text, primary_key=True)
+    invoice_id = Column(Text, nullable=False, index=True)
+    customer_id = Column(Text, nullable=True, index=True)
+    amount = Column(Integer, nullable=False)
+    currency = Column(Text, nullable=False)
+    status = Column(Text, nullable=True, index=True)
+    type = Column(Text, nullable=True)
+    reason = Column(Text, nullable=True)
+    memo = Column(Text, nullable=True)
+    out_of_band_amount = Column(Integer, nullable=True)
+    refund_id = Column(Text, nullable=True, index=True)
+    created = Column(DateTime(timezone=True), nullable=True, index=True)
+    metadata_col = Column("metadata", JSONB, nullable=True)
+    raw_payload = Column(JSONB, nullable=True)
+    stripe_account_id = Column(Text, nullable=True, index=True)
+    loaded_at = Column(DateTime(timezone=True), nullable=True)
+    updated_at = Column(DateTime(timezone=True), nullable=True)

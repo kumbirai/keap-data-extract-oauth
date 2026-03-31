@@ -375,6 +375,27 @@ ssh -N -L 15432:127.0.0.1:5432 YOUR_USER@YOUR_VPS_HOST
 - Leave this window **open** while refreshing data in Power BI.
 - Local port **15432** forwards to Postgres on the VPS (`127.0.0.1:5432`).
 
+**Linux / `psql` example (same rule):** connect to the **local** tunnel port, not `5432`:
+
+```bash
+PGPASSWORD=your_password psql -h 127.0.0.1 -p 15432 -U keap_user -d keap_db
+```
+
+#### Troubleshooting: “Connection to 127.0.0.1:5432 refused”
+
+That message names the **target** port. Two common cases:
+
+1. **Client on your PC is using port `5432`.** The tunnel maps **local `15432` → VPS `127.0.0.1:5432`**. On your laptop, `127.0.0.1:5432` is almost always **not** the tunnel (unless you used `-L 5432:...`). Use **`-p 15432`** (Power BI, `psql`, DBeaver, etc.). If you intentionally forwarded local `5432`, then use `5432` locally—but the default in this doc is `15432`.
+
+2. **You already use `15432` but still get refused.** Then SSH reached the VPS, but **nothing accepted TCP on the VPS at `127.0.0.1:5432`** (Postgres stopped, wrong install, or DB only in Docker without a host publish). On the VPS run:
+
+   ```bash
+   sudo systemctl status postgresql
+   sudo ss -tlnp | grep 5432
+   ```
+
+   You should see Postgres listening on `127.0.0.1:5432` or `*:5432`. If Postgres runs **only inside Docker** and is not published on the host loopback, change the tunnel to match how the container is published (e.g. `-L 15432:127.0.0.1:5432` only works if the host actually listens on `127.0.0.1:5432`).
+
 **In Power BI Desktop:**
 
 1. **Get data** → **Database** → **PostgreSQL database**.

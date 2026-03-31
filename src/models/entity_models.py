@@ -986,7 +986,11 @@ class PaymentGateway(Base):
 
     # Relationships
     subscriptions = relationship("Subscription", back_populates="payment_gateway", foreign_keys="Subscription.payment_gateway_id")
-    payment_plans = relationship("PaymentPlan", foreign_keys="PaymentPlan.merchant_account_id")
+    payment_plans = relationship(
+        "PaymentPlan",
+        back_populates="payment_gateway",
+        foreign_keys="PaymentPlan.merchant_account_id",
+    )
 
     def __repr__(self):
         return f"<PaymentGateway(id={self.id}, name='{self.name}', type='{self.type}')>"
@@ -1094,7 +1098,11 @@ class PaymentPlan(Base):
 
     # Relationships
     order = relationship("Order", back_populates="payment_plan", foreign_keys=[order_id])
-    payment_gateway = relationship("PaymentGateway", foreign_keys=[merchant_account_id])
+    payment_gateway = relationship(
+        "PaymentGateway",
+        back_populates="payment_plans",
+        foreign_keys=[merchant_account_id],
+    )
 
     def __repr__(self):
         return f"<PaymentPlan(order_id={self.order_id}, initial_payment_amount={self.initial_payment_amount})>"

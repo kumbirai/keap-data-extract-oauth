@@ -12,6 +12,8 @@ from src.revolut.settings import RevolutExtractSettings
 
 
 def load_signing_key(settings: RevolutExtractSettings) -> Any:
+    if not settings.private_key_path:
+        raise ValueError("REVOLUT_PRIVATE_KEY_PATH is required for OAuth token exchange")
     with open(settings.private_key_path, "rb") as f:
         pem = f.read()
     passphrase = settings.private_key_passphrase.encode() if settings.private_key_passphrase else None
@@ -19,6 +21,8 @@ def load_signing_key(settings: RevolutExtractSettings) -> Any:
 
 
 def build_client_assertion_jwt(settings: RevolutExtractSettings, private_key: Any) -> str:
+    if not settings.client_id or not settings.issuer or not settings.jwt_kid:
+        raise ValueError("Client assertion requires client_id, issuer, and jwt_kid")
     now = datetime.now(timezone.utc)
     exp = now + timedelta(seconds=DEFAULT_ASSERTION_TTL_SECONDS)
     payload: Dict[str, Any] = {

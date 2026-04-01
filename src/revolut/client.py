@@ -30,11 +30,17 @@ class RevolutApiError(Exception):
 class RevolutClient:
     def __init__(self, settings: RevolutExtractSettings):
         self._settings = settings
-        self._private_key = load_signing_key(settings)
+        self._private_key = (
+            load_signing_key(settings)
+            if (settings.refresh_token or settings.authorization_code)
+            else None
+        )
         self._access_token: Optional[str] = None
         self._token_expires_at: float = 0.0
 
     def _exchange_token(self) -> Tuple[str, int]:
+        if self._private_key is None:
+            raise RevolutApiError("OAuth token exchange requires private key and grant credentials")
         assertion = build_client_assertion_jwt(self._settings, self._private_key)
         data: Dict[str, str] = {
             "client_id": self._settings.client_id,
@@ -75,13 +81,17 @@ class RevolutClient:
         return access, expires_in
 
     def _ensure_token(self) -> str:
-        now = time.time()
-        if self._access_token and now < self._token_expires_at - TOKEN_EXPIRY_SKEW_SECONDS:
-            return self._access_token
-        token, expires_in = self._exchange_token()
-        self._access_token = token
-        self._token_expires_at = now + float(expires_in)
-        return token
+        if self._settings.refresh_token or self._settings.authorization_code:
+            now = time.time()
+            if self._access_token and now < self._token_expires_at - TOKEN_EXPIRY_SKEW_SECONDS:
+                return self._access_token
+            token, expires_in = self._exchange_token()
+            self._access_token = token
+            self._token_expires_at = now + float(expires_in)
+            return token
+        if self._settings.access_token:
+            return self._settings.access_token
+        raise RevolutApiError("No Revolut access token or OAuth grant configured")
 
     def _request_json(
         self,

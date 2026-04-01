@@ -15,14 +15,17 @@ def _parse_account_allowlist(raw: Optional[str]) -> Optional[Set[str]]:
 
 @dataclass(frozen=True)
 class RevolutExtractSettings:
-    client_id: str
-    issuer: str
+    """OAuth (refresh or auth code + signing key) or static ``access_token`` only; see 05-access-keys doc."""
+
+    client_id: Optional[str]
+    issuer: Optional[str]
     jwt_audience: str
-    jwt_kid: str
-    private_key_path: str
+    jwt_kid: Optional[str]
+    private_key_path: Optional[str]
     private_key_passphrase: Optional[str]
     refresh_token: Optional[str]
     authorization_code: Optional[str]
+    access_token: Optional[str]
     use_sandbox: bool
     transaction_lookback_days: int
     initial_history_days: int
@@ -45,6 +48,39 @@ class RevolutExtractSettings:
 
     @classmethod
     def from_env(cls) -> Optional["RevolutExtractSettings"]:
+        from src.revolut.api_constants import DEFAULT_JWT_AUDIENCE
+
+        audience = os.getenv("REVOLUT_JWT_AUDIENCE", "").strip() or DEFAULT_JWT_AUDIENCE
+        refresh = os.getenv("REVOLUT_REFRESH_TOKEN", "").strip() or None
+        auth_code = os.getenv("REVOLUT_AUTHORIZATION_CODE", "").strip() or None
+        static_access = os.getenv("REVOLUT_ACCESS_TOKEN", "").strip() or None
+        use_sandbox = os.getenv("REVOLUT_USE_SANDBOX", "false").lower() in ("1", "true", "yes")
+        lookback = max(0, int(os.getenv("REVOLUT_TRANSACTION_LOOKBACK_DAYS", "7")))
+        initial_days = max(1, int(os.getenv("REVOLUT_INITIAL_HISTORY_DAYS", "730")))
+        list_count = min(max(1, int(os.getenv("REVOLUT_LIST_COUNT", "500"))), MAX_TRANSACTION_PAGE_SIZE)
+        raw_flag = os.getenv("REVOLUT_STORE_RAW_PAYLOAD", "false").lower() in ("1", "true", "yes")
+        passphrase = os.getenv("REVOLUT_PRIVATE_KEY_PASSPHRASE", "").strip() or None
+        allow = _parse_account_allowlist(os.getenv("REVOLUT_ACCOUNT_IDS"))
+
+        if static_access and not refresh and not auth_code:
+            return cls(
+                client_id=None,
+                issuer=None,
+                jwt_audience=audience,
+                jwt_kid=None,
+                private_key_path=None,
+                private_key_passphrase=passphrase,
+                refresh_token=None,
+                authorization_code=None,
+                access_token=static_access,
+                use_sandbox=use_sandbox,
+                transaction_lookback_days=lookback,
+                initial_history_days=initial_days,
+                list_count=list_count,
+                store_raw_payload=raw_flag,
+                account_allowlist=allow,
+            )
+
         client_id = os.getenv("REVOLUT_CLIENT_ID", "").strip()
         if not client_id:
             return None
@@ -55,22 +91,8 @@ class RevolutExtractSettings:
         if not kid:
             return None
         issuer = os.getenv("REVOLUT_ISSUER", "").strip() or client_id
-        audience = os.getenv("REVOLUT_JWT_AUDIENCE", "").strip()
-        if not audience:
-            from src.revolut.api_constants import DEFAULT_JWT_AUDIENCE
-
-            audience = DEFAULT_JWT_AUDIENCE
-        refresh = os.getenv("REVOLUT_REFRESH_TOKEN", "").strip() or None
-        auth_code = os.getenv("REVOLUT_AUTHORIZATION_CODE", "").strip() or None
         if not refresh and not auth_code:
             return None
-        use_sandbox = os.getenv("REVOLUT_USE_SANDBOX", "false").lower() in ("1", "true", "yes")
-        lookback = max(0, int(os.getenv("REVOLUT_TRANSACTION_LOOKBACK_DAYS", "7")))
-        initial_days = max(1, int(os.getenv("REVOLUT_INITIAL_HISTORY_DAYS", "730")))
-        list_count = min(max(1, int(os.getenv("REVOLUT_LIST_COUNT", "500"))), MAX_TRANSACTION_PAGE_SIZE)
-        raw_flag = os.getenv("REVOLUT_STORE_RAW_PAYLOAD", "false").lower() in ("1", "true", "yes")
-        passphrase = os.getenv("REVOLUT_PRIVATE_KEY_PASSPHRASE", "").strip() or None
-        allow = _parse_account_allowlist(os.getenv("REVOLUT_ACCOUNT_IDS"))
         return cls(
             client_id=client_id,
             issuer=issuer,
@@ -80,6 +102,7 @@ class RevolutExtractSettings:
             private_key_passphrase=passphrase,
             refresh_token=refresh,
             authorization_code=auth_code,
+            access_token=None,
             use_sandbox=use_sandbox,
             transaction_lookback_days=lookback,
             initial_history_days=initial_days,

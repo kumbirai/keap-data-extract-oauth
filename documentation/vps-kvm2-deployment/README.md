@@ -6,7 +6,9 @@ This guide targets a **Hostinger-style KVM VPS** used **only** for:
 - **PostgreSQL** (data store for Keap extract + OAuth tokens)
 - **Keap data extractor** (scheduled CLI runs)
 
-**Power BI Desktop** runs on a **Windows PC**. The recommended way to reach PostgreSQL from that PC is an **SSH tunnel** (see [Connect Power BI to PostgreSQL](#connect-power-bi-to-postgresql)).
+**Power BI Desktop** runs on a **Windows PC**. The usual way to reach PostgreSQL from that PC is an **SSH tunnel** (see [Connect Power BI to PostgreSQL](#connect-power-bi-to-postgresql)).
+
+**Power BI Service** (scheduled refresh, sharing in the cloud) **cannot** use your PC’s SSH tunnel—refresh runs in **Microsoft’s cloud**. Use either a **direct cloud connection** to a reachable PostgreSQL endpoint (see [Power BI Service (cloud refresh)](#power-bi-service-cloud-refresh)) or an **[on-premises data gateway](https://learn.microsoft.com/en-us/data-integration/gateway/service-gateway-onprem)** on a machine that can reach the database.
 
 | Typical KVM 2 profile | Role in this guide |
 |----------------------|-------------------|
@@ -23,14 +25,16 @@ For generic install and commands, see [08-deployment-guide.md](../08-deployment-
 ```text
 ┌─────────────────────────────────────────┐
 │ VPS (Ubuntu + PostgreSQL + Keap extract) │
-│  • Postgres: localhost:5432 only          │
+│  • Postgres: localhost (Desktop tunnel)   │
+│    or TCP 5432 restricted (Service/gw)   │
 │  • Extract: cron/systemd → python -m src │
 └─────────────────┬───────────────────────┘
-                  │ SSH (port 22)
-                  │   optional: -L forwards DB (and OAuth once)
+                  │ SSH :22 + optional -L (Desktop)
+                  │   OR :5432 from Microsoft / gateway
 ┌─────────────────▼───────────────────────┐
-│ Windows PC                               │
-│  • Power BI Desktop → 127.0.0.1:<port>  │
+│ Clients                                    │
+│  • Power BI Desktop → 127.0.0.1:<port>    │
+│  • Power BI Service → cloud or gateway    │
 └──────────────────────────────────────────┘
 ```
 
@@ -108,7 +112,9 @@ Use a **single client IPv4** (or your office static range) everywhere below. Rep
 
 4. **Hostinger (or other) cloud firewall:** add an inbound rule for **TCP 5432** **from** that same IP (or range). If this layer is missing, the port may still be unreachable or accidentally wide open depending on the provider defaults.
 
-5. **Clients (e.g. Power BI):** use the VPS **public hostname or IP**, **port `5432`**, database `keap_db`, and your DB user/password. Expect TLS/certificate prompts unless you disable DB encryption or trust the server cert (see [Troubleshooting](#troubleshooting-windows-certificate-error-when-connecting-power-bi)). For **TLS to Postgres**, configure server SSL and switch the `pg_hba` line to `hostssl` per [PostgreSQL SSL](https://www.postgresql.org/docs/current/ssl-tcp.html).
+5. **Clients (e.g. Power BI Desktop over the public internet):** use the VPS **public hostname or IP**, **port `5432`**, database `keap_db`, and your DB user/password. Expect TLS/certificate prompts unless you disable DB encryption or trust the server cert (see [Troubleshooting](#troubleshooting-windows-certificate-error-when-connecting-power-bi)). For **TLS to Postgres**, configure server SSL and switch the `pg_hba` line to `hostssl` per [PostgreSQL SSL](https://www.postgresql.org/docs/current/ssl-tcp.html).
+
+**Power BI Service** needs a path that does not rely on your PC; see [Power BI Service (cloud refresh)](#power-bi-service-cloud-refresh). If you use a **cloud connection** with a public hostname, treat **TLS + `hostssl`** as mandatory (not optional hardening).
 
 The extractor on the VPS keeps **`DB_HOST=localhost`** in `.env`; it does not need to use the public interface.
 
@@ -132,6 +138,18 @@ Edit `.env`:
 
 - `DB_HOST=localhost`, `DB_PORT=5432`, `DB_NAME=keap_db`, `DB_USER=keap_user`, `DB_PASSWORD=...`
 - Keap OAuth fields and `TOKEN_ENCRYPTION_KEY` (see [.env.example](../../.env.example))
+
+**Revolut (optional BI extract):** Register your **certificate** with Revolut per [Make your first API request — add your certificate](https://developer.revolut.com/docs/guides/manage-accounts/get-started/make-your-first-api-request). Full detail: [05-access-keys-and-credentials.md](../revolut/05-access-keys-and-credentials.md).
+
+- **Recommended on a server:** `REVOLUT_CLIENT_ID`, `REVOLUT_PRIVATE_KEY_PATH`, `REVOLUT_JWT_KID`, and `REVOLUT_REFRESH_TOKEN` so the app mints a **client assertion JWT**, exchanges it for an **access token**, and refreshes automatically.
+- **Short-lived bearer only:** set `REVOLUT_ACCESS_TOKEN` to the current access token (the value Revolut returns for API calls, e.g. `oa_prod_…`). Omit refresh token and authorization code. **Update `.env` when the token expires** (often on the order of ~40 minutes in production), or switch to the refresh-token flow above.
+
+Example check against the live API (use a real token from your vault, not in shell history if possible):
+
+```bash
+curl https://b2b.revolut.com/api/1.0/accounts \
+  -H "Authorization: Bearer <your_access_token>"
+```
 
 ```bash
 alembic upgrade head
@@ -219,7 +237,7 @@ Replace `srv1498298.hstgr.cloud` with your **A record** or Hostinger hostname. F
 - Read logs: `sudo tail -50 /var/log/letsencrypt/letsencrypt.log`
 - **DNS challenge** (no port 80 needed): use a domain you control with a DNS API, or Hostinger DNS + `certbot certonly --manual --preferred-challenges dns -d your.domain` (add TXT record when prompted), then configure nginx to use the issued cert paths under `/etc/letsencrypt/live/`.
 
-Add a **proxy** for the OAuth callback. Edit the server block Certbot created (often `` or a site under `sites-available/`):
+Add a **proxy** for the OAuth callback. Edit the server block Certbot created (often under `/etc/nginx/sites-available/`, e.g. your hostname’s config):
 
 ```nginx
 location /oauth/callback {
@@ -362,7 +380,32 @@ Adjust paths, user, and calendar to your policy.
 
 ## Connect Power BI to PostgreSQL
 
-### Recommended: SSH tunnel (easiest and most reliable)
+**Power BI Desktop** can use the **SSH tunnel** below. **Power BI Service** needs one of the options in [Power BI Service (cloud refresh)](#power-bi-service-cloud-refresh)—the service cannot see `127.0.0.1` on your laptop.
+
+### Power BI Service (cloud refresh)
+
+Scheduled refresh and shared datasets run in **Microsoft’s cloud**. The PostgreSQL connector supports **[cloud connections](https://learn.microsoft.com/en-us/power-bi/connect-data/service-connect-cloud-data-sources)** and connections through **[on-premises](https://learn.microsoft.com/en-us/data-integration/gateway/service-gateway-onprem)** or **[virtual network](https://learn.microsoft.com/en-us/data-integration/vnet/overview)** data gateways (see [Power Query PostgreSQL connector](https://learn.microsoft.com/en-us/power-query/connectors/postgresql)).
+
+| Approach | When to use | Database exposure |
+|----------|-------------|-------------------|
+| **On-premises data gateway** | Default recommendation for a VPS database you do **not** want on the open internet | Install the gateway on **Windows** (always-on PC or small VM). Allow **TCP 5432** only from that machine’s public IP (same pattern as [§2.1](#21-optional-expose-postgresql-tcp-5432-restricted), using the gateway’s IP instead of an analyst PC), or use a **VPN** from the gateway host to the VPS. Postgres stays off `0.0.0.0/0`. |
+| **Direct cloud connection** | You accept exposing PostgreSQL to Microsoft’s refresh infrastructure (and you can maintain firewall rules) | Postgres listens on a **public** hostname/IP with **`hostssl`** + `scram-sha-256`, strong password, and **least-privilege** role. Firewall allows **inbound 5432** from [Azure service tags / IP ranges](https://learn.microsoft.com/en-us/azure/virtual-network/service-tags-overview) relevant to **Power BI / Power Platform** (download the [weekly JSON](https://www.microsoft.com/en-us/download/details.aspx?id=56519); filter for tags such as **PowerBI**—verify current tag names for your cloud). This is **operationally heavier** than a gateway because ranges change. |
+
+**Gateway workflow (summary):**
+
+1. On the Windows host that can reach Postgres, install the [standard mode on-premises data gateway](https://learn.microsoft.com/en-us/data-integration/gateway/service-gateway-install).
+2. In **Power BI service** → **Settings** → **Manage connections and gateways**, confirm the gateway is online.
+3. Publish a report/dataset from Desktop that uses PostgreSQL, or configure the semantic model’s **Gateway and cloud connections** so the PostgreSQL source maps to **this gateway** (not “cloud” only). Enter server (VPS hostname or internal IP if VPN), port `5432`, database, and credentials. Gateway June 2025+ bundles **Npgsql**; older gateway builds may need the [Npgsql MSI](https://github.com/npgsql/npgsql/releases/tag/v4.0.17) per Microsoft’s connector prerequisites.
+
+**Direct cloud workflow (summary):**
+
+1. Complete [§2.1](#21-optional-expose-postgresql-tcp-5432-restricted) but replace the single static client IP with **allowlisted Microsoft / Azure ranges** (or your provider’s equivalent “IP group” updated from the JSON). **Do not** leave `5432` open to the world without `hostssl` and a deliberate risk decision.
+2. Use a **TLS certificate** Postgres clients trust (commercial CA, or Let’s Encrypt on the DB if you terminate TLS on Postgres—follow [PostgreSQL SSL](https://www.postgresql.org/docs/current/ssl-tcp.html)). Name on the cert should match the **hostname** you enter in Power BI.
+3. After publishing from Desktop, open the **semantic model** in the Power BI service → **Settings** → **Gateway and cloud connections** → under **Cloud connections**, map the PostgreSQL data source to a **cloud** connection using the same server name, **encrypted** connection, and DB credentials. If refresh fails with certificate errors, align hostname and trust chain with [Troubleshooting: Windows certificate error](#troubleshooting-windows-certificate-error-when-connecting-power-bi) (same class of issue in the cloud path).
+
+**Security checklist (both paths):** dedicated DB user (not superuser), `scram-sha-256`, long random password, only required schemas/tables granted, and [§2.1](#21-optional-expose-postgresql-tcp-5432-restricted) discipline on UFW + provider firewall.
+
+### Recommended: SSH tunnel (easiest and most reliable for Desktop)
 
 **Why this option:** No VPN server to run, no public PostgreSQL port. Traffic is encrypted inside SSH. Same pattern works from home or office if SSH is reachable.
 
@@ -502,19 +545,20 @@ ssh -N -L 15432:127.0.0.1:5432 keap-vps
 | Method | Use case |
 |--------|----------|
 | **VPN (e.g. WireGuard)** | Many internal services, multiple users, fixed office network. More moving parts on the VPS. |
-| **Locked-down DB** (expose `5432` only to your IP: `pg_hba` + UFW + provider firewall; see [§2.1](#21-optional-expose-postgresql-tcp-5432-restricted)) | Unattended scheduled refresh without a tunnel; requires static IP and careful hardening. |
+| **Locked-down DB** (expose `5432` only to your IP: `pg_hba` + UFW + provider firewall; see [§2.1](#21-optional-expose-postgresql-tcp-5432-restricted)) | Unattended refresh from a **fixed** client IP (rare for Power BI Service—prefer **gateway** or Microsoft IP allowlists; see [Power BI Service (cloud refresh)](#power-bi-service-cloud-refresh)). |
 
-For a single analyst and typical KVM 2 setup, **SSH tunnel + Import** (refresh when connected) is the simplest reliable path.
+For a single analyst and typical KVM 2 setup, **SSH tunnel + Import** (refresh when connected) is the simplest reliable path for **Desktop**. For **Power BI Service**, prefer a **gateway** or a **TLS-hardened** endpoint with a **restricted** inbound policy, not an open `5432`.
 
 ---
 
 ## Checklist
 
-- [ ] UFW: SSH allowed; Postgres **not** on the public internet **or** (if using [§2.1](#21-optional-expose-postgresql-tcp-5432-restricted)) `5432` allowed **only** from known client IP(s).
+- [ ] UFW: SSH allowed; Postgres **not** on the public internet **or** (if using [§2.1](#21-optional-expose-postgresql-tcp-5432-restricted)) `5432` allowed **only** from known client IP(s) **or** from maintained Microsoft/Azure allowlists for [Power BI Service (cloud refresh)](#power-bi-service-cloud-refresh).
 - [ ] `.env` complete; `alembic upgrade head` applied.
 - [ ] Keap OAuth completed; tokens in DB.
 - [ ] Timer or cron for `--update` if needed.
-- [ ] Power BI connects via `127.0.0.1:15432` with SSH tunnel active (if certificate errors appear, disable DB encryption or trust server cert—see [Troubleshooting](#troubleshooting-windows-certificate-error-when-connecting-power-bi)).
+- [ ] **Power BI Desktop:** `127.0.0.1:15432` with SSH tunnel active (certificate issues: [Troubleshooting](#troubleshooting-windows-certificate-error-when-connecting-power-bi)).
+- [ ] **Power BI Service:** semantic model mapped to an **on-premises gateway** (gateway host can reach Postgres) **or** a **cloud connection** to a **TLS** (`hostssl`) endpoint with firewall rules you can sustain; see [Power BI Service (cloud refresh)](#power-bi-service-cloud-refresh).
 
 ---
 

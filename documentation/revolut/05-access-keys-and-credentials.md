@@ -16,7 +16,7 @@ Revolut provides **sandbox** and **production** environments. Use **sandbox** fo
 
 ## 5.3 Register the application and certificates
 
-Revolut Business API authentication typically uses a **JWT client assertion** signed with a **private key** whose **public certificate** is registered on the application.
+Revolut Business API authentication typically uses a **JWT client assertion** signed with a **private key** whose **public certificate** is registered on the application. Revolut documents **step 1 — add your certificate** in [Make your first API request](https://developer.revolut.com/docs/guides/manage-accounts/get-started/make-your-first-api-request); use that guide for the full first-request flow.
 
 **High-level steps** (confirm against current guides):
 
@@ -27,9 +27,26 @@ Revolut Business API authentication typically uses a **JWT client assertion** si
 
 Official guides to follow:
 
-- [Make your first API request](https://developer.revolut.com/docs/guides/manage-accounts/get-started/make-your-first-api-request)
 - [Update application certificates](https://developer.revolut.com/docs/guides/build-banking-apps/manage-your-applications/update-certificates) (rotation)
 - [Work with JSON Web Tokens](https://developer.revolut.com/docs/guides/build-banking-apps/tutorials/work-with-json-web-tokens)
+
+## 5.3.1 Access token vs client assertion (what goes where)
+
+Revolut uses two different string types; do not confuse them:
+
+| Artifact | Role | Typical lifetime | In this project |
+|----------|------|------------------|-----------------|
+| **Access token** | Sent on every Business API call as `Authorization: Bearer <access_token>` | Short (often on the order of **~40 minutes** in production—confirm `expires_in` from the token response) | **`REVOLUT_ACCESS_TOKEN`** for a **manual / short-lived** setup only, **or** obtained automatically when using OAuth variables below |
+| **Client assertion JWT** | Proves the client to the **token** endpoint; signed with your **private key** matching the uploaded certificate | Minutes | Built in code (`build_client_assertion_jwt`); not stored as a single long-lived string in `.env` |
+
+**Verify connectivity** (replace the placeholder with a current access token; never commit real tokens):
+
+```bash
+curl https://b2b.revolut.com/api/1.0/accounts \
+  -H "Authorization: Bearer <your_access_token>"
+```
+
+For **scheduled extracts**, prefer **`REVOLUT_REFRESH_TOKEN`** (plus client id, private key, `kid`) so the app exchanges the client assertion for a fresh **access token** before each run or when the cached token nears expiry. When an access token expires, obtain a new one using the **token** endpoint and the **client assertion JWT** (and refresh token or initial authorization code) per Revolut’s docs—not by reusing an expired access token.
 
 ## 5.4 JWT client assertion (conceptual)
 
@@ -65,22 +82,26 @@ Request the **minimum** scopes required:
 - Avoid **READ_SENSITIVE_CARD_DATA** unless compliance approves storage and access of those fields
 - Avoid **WRITE** and **PAY** for this BI pipeline
 
-## 5.7 Environment variables (proposal for this project)
+## 5.7 Environment variables (this project)
 
-When implementation lands, align with [`.env.example`](../../.env.example) (copy to `.env`; never commit secrets). Proposed names:
+Align with [`.env.example`](../../.env.example) (copy to `.env`; never commit secrets).
 
 | Variable | Purpose |
 |----------|---------|
+| `REVOLUT_ACCESS_TOKEN` | Optional. **Only** the current **access token** (`oa_prod_…` / sandbox equivalent). Use **without** `REVOLUT_REFRESH_TOKEN` and **without** `REVOLUT_AUTHORIZATION_CODE` for a static bearer. **Rotate manually** in `.env` when Revolut expires the token. If `REVOLUT_REFRESH_TOKEN` (or authorization code) is set, OAuth mode is used and this variable is ignored. |
 | `REVOLUT_USE_SANDBOX` | `true` / `false` — selects sandbox vs production hosts |
 | `REVOLUT_CLIENT_ID` | OAuth / API client id from Revolut |
+| `REVOLUT_JWT_KID` | Key id Revolut assigns to the uploaded certificate (`kid` in the client assertion header) |
 | `REVOLUT_ISSUER` | If distinct from client id for JWT `iss` (optional; omit if same) |
+| `REVOLUT_JWT_AUDIENCE` | Override JWT `aud` if token exchange fails (default `https://revolut.com`) |
 | `REVOLUT_PRIVATE_KEY_PATH` | Filesystem path to PEM private key (server only) |
 | `REVOLUT_PRIVATE_KEY_PASSPHRASE` | If the key is encrypted (optional) |
-| `REVOLUT_REFRESH_TOKEN` | Persisted refresh token if your flow stores it in env (prefer secret manager in production) |
+| `REVOLUT_REFRESH_TOKEN` | Persisted refresh token (recommended for production; prefer secret manager on the VPS) |
+| `REVOLUT_AUTHORIZATION_CODE` | One-shot alternative to refresh token for initial exchange |
 | `REVOLUT_TRANSACTION_LOOKBACK_DAYS` | Bounded lookback for state drift (see [01-scope-and-requirements.md](01-scope-and-requirements.md)) |
 | `REVOLUT_STORE_RAW_PAYLOAD` | `true` / `false` — store full JSON in DB (default `false` in high-sensitivity environments) |
 
-If the token endpoint or JWT claims require additional ids (e.g. redirect URI for some flows), add variables **only** when the implementation confirms they are needed.
+If the token endpoint or JWT claims require additional ids (e.g. redirect URI for some flows), add variables **only** when Revolut’s current docs require them.
 
 ## 5.8 Secret handling and rotation
 

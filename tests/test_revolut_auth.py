@@ -31,6 +31,7 @@ def test_build_client_assertion_jwt_claims(tmp_path):
         private_key_passphrase=None,
         refresh_token="rt",
         authorization_code=None,
+        access_token=None,
         use_sandbox=True,
         transaction_lookback_days=7,
         initial_history_days=30,

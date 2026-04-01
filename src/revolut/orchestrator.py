@@ -24,8 +24,9 @@ def run_revolut_extract(
     settings = _settings_from_env()
     if not settings:
         logger.info(
-            "Revolut extract skipped: set REVOLUT_CLIENT_ID, REVOLUT_PRIVATE_KEY_PATH, "
-            "REVOLUT_JWT_KID, and REVOLUT_REFRESH_TOKEN or REVOLUT_AUTHORIZATION_CODE."
+            "Revolut extract skipped: set REVOLUT_ACCESS_TOKEN (short-lived), or set "
+            "REVOLUT_CLIENT_ID, REVOLUT_PRIVATE_KEY_PATH, REVOLUT_JWT_KID, and "
+            "REVOLUT_REFRESH_TOKEN or REVOLUT_AUTHORIZATION_CODE."
         )
         return LoadResult(0, 0, 0)
     client = RevolutClient(settings)
@@ -49,8 +50,9 @@ def run_revolut_entity(
     settings = _settings_from_env()
     if not settings:
         raise RuntimeError(
-            "Revolut is not configured. Set REVOLUT_CLIENT_ID, REVOLUT_PRIVATE_KEY_PATH, "
-            "REVOLUT_JWT_KID, and REVOLUT_REFRESH_TOKEN or REVOLUT_AUTHORIZATION_CODE."
+            "Revolut is not configured. Set REVOLUT_ACCESS_TOKEN, or set REVOLUT_CLIENT_ID, "
+            "REVOLUT_PRIVATE_KEY_PATH, REVOLUT_JWT_KID, and REVOLUT_REFRESH_TOKEN or "
+            "REVOLUT_AUTHORIZATION_CODE."
         )
     client = RevolutClient(settings)
     if entity_type == "revolut_accounts":

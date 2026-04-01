@@ -7,6 +7,22 @@ from src.revolut.client import RevolutApiError, RevolutClient
 from src.revolut.settings import RevolutExtractSettings
 
 
+def test_from_env_static_access_token_only(monkeypatch):
+    for key in (
+        "REVOLUT_ACCESS_TOKEN",
+        "REVOLUT_REFRESH_TOKEN",
+        "REVOLUT_AUTHORIZATION_CODE",
+        "REVOLUT_CLIENT_ID",
+    ):
+        monkeypatch.delenv(key, raising=False)
+    monkeypatch.setenv("REVOLUT_ACCESS_TOKEN", "env-static-token")
+    settings = RevolutExtractSettings.from_env()
+    assert settings is not None
+    assert settings.access_token == "env-static-token"
+    assert settings.client_id is None
+    assert settings.private_key_path is None
+
+
 def _settings(tmp_path):
     from cryptography.hazmat.primitives.asymmetric import rsa
     from cryptography.hazmat.primitives.serialization import Encoding, NoEncryption, PrivateFormat
@@ -28,6 +44,7 @@ def _settings(tmp_path):
         private_key_passphrase=None,
         refresh_token="rt",
         authorization_code=None,
+        access_token=None,
         use_sandbox=True,
         transaction_lookback_days=7,
         initial_history_days=30,
@@ -70,3 +87,35 @@ def test_request_raises_after_backoff_exhausted(mock_request, mock_post, tmp_pat
     client = RevolutClient(settings)
     with pytest.raises(RevolutApiError):
         client.list_accounts()
+
+
+@patch("src.revolut.client.requests.request")
+def test_list_accounts_static_bearer_skips_token_endpoint(mock_request):
+    settings = RevolutExtractSettings(
+        client_id=None,
+        issuer=None,
+        jwt_audience="https://revolut.com",
+        jwt_kid=None,
+        private_key_path=None,
+        private_key_passphrase=None,
+        refresh_token=None,
+        authorization_code=None,
+        access_token="oa_prod_static_test_token",
+        use_sandbox=False,
+        transaction_lookback_days=7,
+        initial_history_days=30,
+        list_count=100,
+        store_raw_payload=False,
+        account_allowlist=None,
+    )
+    mock_request.return_value = MagicMock(
+        status_code=200,
+        content=b'[{"id":"a1"}]',
+        json=lambda: [{"id": "a1"}],
+    )
+    client = RevolutClient(settings)
+    out = client.list_accounts()
+    assert out == [{"id": "a1"}]
+    mock_request.assert_called_once()
+    _args, kwargs = mock_request.call_args
+    assert kwargs["headers"]["Authorization"] == "Bearer oa_prod_static_test_token"

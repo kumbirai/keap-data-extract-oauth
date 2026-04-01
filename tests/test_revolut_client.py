@@ -7,6 +7,29 @@ from src.revolut.client import RevolutApiError, RevolutClient
 from src.revolut.settings import RevolutExtractSettings
 
 
+def test_from_env_oauth_without_jwt_kid(monkeypatch, tmp_path):
+    for key in (
+        "REVOLUT_ACCESS_TOKEN",
+        "REVOLUT_REFRESH_TOKEN",
+        "REVOLUT_AUTHORIZATION_CODE",
+        "REVOLUT_CLIENT_ID",
+        "REVOLUT_JWT_KID",
+        "REVOLUT_PRIVATE_KEY_PATH",
+    ):
+        monkeypatch.delenv(key, raising=False)
+    key_file = tmp_path / "rev.pem"
+    key_file.write_bytes(b"dummy")
+    monkeypatch.setenv("REVOLUT_CLIENT_ID", "client-id")
+    monkeypatch.setenv("REVOLUT_PRIVATE_KEY_PATH", str(key_file))
+    monkeypatch.setenv("REVOLUT_REFRESH_TOKEN", "refresh-token")
+    monkeypatch.setenv("REVOLUT_ACCESS_TOKEN", "unused-when-refresh-set")
+    settings = RevolutExtractSettings.from_env()
+    assert settings is not None
+    assert settings.jwt_kid is None
+    assert settings.refresh_token == "refresh-token"
+    assert settings.access_token is None
+
+
 def test_from_env_static_access_token_only(monkeypatch):
     for key in (
         "REVOLUT_ACCESS_TOKEN",

@@ -21,7 +21,8 @@ SANDBOX_HOST = "https://sandbox-b2b.revolut.com"
 CLIENT_ASSERTION_TYPE = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
 
 # JWT signing for client assertion (Revolut Business API).
-JWT_ALGORITHM = "PS256"
+# "Make your first API request" uses RS256 for the client assertion JWT.
+JWT_ALGORITHM = "RS256"
 # Default audience; override with REVOLUT_JWT_AUDIENCE if token exchange fails.
 DEFAULT_JWT_AUDIENCE = "https://revolut.com"
 

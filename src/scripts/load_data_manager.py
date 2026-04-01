@@ -159,11 +159,7 @@ class DataLoadManager:
             if entity_type.startswith("revolut_"):
                 from src.revolut.orchestrator import run_revolut_entity
 
-                try:
-                    return run_revolut_entity(self.db, self.checkpoint_manager, entity_type, update)
-                except RuntimeError as e:
-                    logger.error("Revolut load cannot run: %s", e)
-                    raise
+                return run_revolut_entity(self.db, self.checkpoint_manager, entity_type, update)
             loader = LoaderFactory.create_loader(entity_type, self.client, self.db, self.checkpoint_manager)
             return loader.load_all(update=update)
         except ValueError as e:

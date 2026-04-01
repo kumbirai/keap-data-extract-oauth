@@ -62,7 +62,7 @@ class RevolutExtractSettings:
         passphrase = os.getenv("REVOLUT_PRIVATE_KEY_PASSPHRASE", "").strip() or None
         allow = _parse_account_allowlist(os.getenv("REVOLUT_ACCOUNT_IDS"))
 
-        if static_access and not refresh and not auth_code:
+        def _static_settings(token: str) -> "RevolutExtractSettings":
             return cls(
                 client_id=None,
                 issuer=None,
@@ -72,7 +72,7 @@ class RevolutExtractSettings:
                 private_key_passphrase=passphrase,
                 refresh_token=None,
                 authorization_code=None,
-                access_token=static_access,
+                access_token=token,
                 use_sandbox=use_sandbox,
                 transaction_lookback_days=lookback,
                 initial_history_days=initial_days,
@@ -81,15 +81,16 @@ class RevolutExtractSettings:
                 account_allowlist=allow,
             )
 
+        if static_access and not refresh and not auth_code:
+            return _static_settings(static_access)
+
         client_id = os.getenv("REVOLUT_CLIENT_ID", "").strip()
         if not client_id:
             return None
         key_path = os.getenv("REVOLUT_PRIVATE_KEY_PATH", "").strip()
         if not key_path:
             return None
-        kid = os.getenv("REVOLUT_JWT_KID", "").strip()
-        if not kid:
-            return None
+        kid = os.getenv("REVOLUT_JWT_KID", "").strip() or None
         issuer = os.getenv("REVOLUT_ISSUER", "").strip() or client_id
         if not refresh and not auth_code:
             return None

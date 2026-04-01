@@ -1,4 +1,4 @@
-"""PS256 client assertion JWT for Revolut Business API token exchange."""
+"""RS256 client assertion JWT for Revolut Business API token exchange."""
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict
@@ -21,8 +21,8 @@ def load_signing_key(settings: RevolutExtractSettings) -> Any:
 
 
 def build_client_assertion_jwt(settings: RevolutExtractSettings, private_key: Any) -> str:
-    if not settings.client_id or not settings.issuer or not settings.jwt_kid:
-        raise ValueError("Client assertion requires client_id, issuer, and jwt_kid")
+    if not settings.client_id or not settings.issuer:
+        raise ValueError("Client assertion requires client_id and issuer")
     now = datetime.now(timezone.utc)
     exp = now + timedelta(seconds=DEFAULT_ASSERTION_TTL_SECONDS)
     payload: Dict[str, Any] = {
@@ -33,5 +33,7 @@ def build_client_assertion_jwt(settings: RevolutExtractSettings, private_key: An
         "exp": int(exp.timestamp()),
         "jti": str(uuid.uuid4()),
     }
-    headers = {"kid": settings.jwt_kid, "alg": JWT_ALGORITHM}
+    headers: Dict[str, str] = {"alg": JWT_ALGORITHM}
+    if settings.jwt_kid:
+        headers["kid"] = settings.jwt_kid
     return jwt.encode(payload, private_key, algorithm=JWT_ALGORITHM, headers=headers)

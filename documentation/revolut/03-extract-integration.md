@@ -81,7 +81,7 @@ If using per-account suffixes, document the format (e.g. `revolut_transactions:u
 
 ## 3.7 Dependencies
 
-When implementing code (outside this documentation pass), add an HTTP client library if not already present (e.g. `httpx` or `requests`) and a **JWT** library able to sign with **PS256** and the private key format Revolut expects. Pin versions in [`requirements.txt`](../../requirements.txt).
+When implementing code (outside this documentation pass), add an HTTP client library if not already present (e.g. `httpx` or `requests`) and a **JWT** library able to sign with **RS256** (per Revolut’s [Make your first API request](https://developer.revolut.com/docs/guides/manage-accounts/get-started/make-your-first-api-request)) and the private key format Revolut expects. Pin versions in [`requirements.txt`](../../requirements.txt).
 
 ## 3.8 Database migrations vs `create_all`
 

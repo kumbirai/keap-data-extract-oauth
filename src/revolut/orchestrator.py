@@ -49,11 +49,13 @@ def run_revolut_entity(
 ) -> LoadResult:
     settings = _settings_from_env()
     if not settings:
-        raise RuntimeError(
-            "Revolut is not configured. Set REVOLUT_ACCESS_TOKEN, or set REVOLUT_CLIENT_ID, "
-            "REVOLUT_PRIVATE_KEY_PATH, REVOLUT_JWT_KID, and REVOLUT_REFRESH_TOKEN or "
-            "REVOLUT_AUTHORIZATION_CODE."
+        logger.info(
+            "Revolut load skipped (%s): set REVOLUT_ACCESS_TOKEN (short-lived), or set "
+            "REVOLUT_CLIENT_ID, REVOLUT_PRIVATE_KEY_PATH, REVOLUT_JWT_KID, and "
+            "REVOLUT_REFRESH_TOKEN or REVOLUT_AUTHORIZATION_CODE.",
+            entity_type,
         )
+        return LoadResult(0, 0, 0)
     client = RevolutClient(settings)
     if entity_type == "revolut_accounts":
         result, _ = sync_revolut_accounts(session, checkpoint_manager, client, settings)

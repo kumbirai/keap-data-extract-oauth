@@ -22,7 +22,7 @@ Revolut Business API authentication typically uses a **JWT client assertion** si
 
 1. In the **Revolut Business** web application, open **Developer** or **API** settings (wording may vary).
 2. **Create** a new API application (or use an existing one dedicated to this extract).
-3. Generate an **RSA key pair** and **public certificate** for signing (Revolut commonly documents **PS256** and certificate upload steps).
+3. Generate an **RSA key pair** and **public certificate** for signing ([Make your first API request](https://developer.revolut.com/docs/guides/manage-accounts/get-started/make-your-first-api-request) documents **RS256** for the client-assertion JWT).
 4. **Upload** the **public** certificate to Revolut; **retain** the **private** key **only** in a secret store or secure file path on the server—**never** commit it to git.
 
 Official guides to follow:
@@ -50,7 +50,7 @@ For **scheduled extracts**, prefer **`REVOLUT_REFRESH_TOKEN`** (plus client id, 
 
 ## 5.4 JWT client assertion (conceptual)
 
-The client assertion is a **short-lived JWT** signed with **PS256** using your **private key**. Claims commonly include (names and required values **must match current Revolut documentation**):
+The client assertion is a **short-lived JWT** signed with **RS256** using your **private key** (per [Make your first API request](https://developer.revolut.com/docs/guides/manage-accounts/get-started/make-your-first-api-request)). Claims commonly include (names and required values **must match current Revolut documentation**):
 
 - **`iss`** — issuer (often your **client id**)
 - **`sub`** — subject (often the same client id)
@@ -58,7 +58,7 @@ The client assertion is a **short-lived JWT** signed with **PS256** using your *
 - **`iat`**, **`exp`** — issued-at and expiry (keep the window small; e.g. minutes)
 - **`jti`** — unique jwt id per request (recommended)
 
-The JWT header typically includes **`kid`** referencing the **uploaded certificate** key id Revolut assigns.
+The JWT header **may** include **`kid`** if Revolut gives you a certificate key id; some dashboards only document the assertion body and refresh grant (see token `curl` in Revolut’s guide) without a separate id field—this project omits `kid` from the JWT when `REVOLUT_JWT_KID` is unset.
 
 **Use the official JWT creation guide** for exact claim sets:
 
@@ -66,7 +66,9 @@ The JWT header typically includes **`kid`** referencing the **uploaded certifica
 
 ## 5.5 Exchanging assertion for tokens
 
-Post the client assertion (or follow the documented grant type) to the Revolut **token** endpoint. A successful response returns at least:
+Post the client assertion as Revolut documents—same shape as their token `curl` (`grant_type=refresh_token`, `refresh_token`, `client_assertion_type`, `client_assertion`, plus `client_id` where required). This app signs `client_assertion` with **RS256**, matching [Make your first API request](https://developer.revolut.com/docs/guides/manage-accounts/get-started/make-your-first-api-request). If another Revolut article mentions a different `alg`, prefer the guide that matches **your** API product and re-check the live docs.
+
+A successful response returns at least:
 
 - **`access_token`** — send as `Authorization: Bearer <access_token>` on API calls
 - **`refresh_token`** — store securely for renewing access without repeating user steps (if issued for your flow)
@@ -91,8 +93,8 @@ Align with [`.env.example`](../../.env.example) (copy to `.env`; never commit se
 | `REVOLUT_ACCESS_TOKEN` | Optional. **Only** the current **access token** (`oa_prod_…` / sandbox equivalent). Use **without** `REVOLUT_REFRESH_TOKEN` and **without** `REVOLUT_AUTHORIZATION_CODE` for a static bearer. **Rotate manually** in `.env` when Revolut expires the token. If `REVOLUT_REFRESH_TOKEN` (or authorization code) is set, OAuth mode is used and this variable is ignored. |
 | `REVOLUT_USE_SANDBOX` | `true` / `false` — selects sandbox vs production hosts |
 | `REVOLUT_CLIENT_ID` | OAuth / API client id from Revolut |
-| `REVOLUT_JWT_KID` | Key id Revolut assigns to the uploaded certificate (`kid` in the client assertion header) |
-| `REVOLUT_ISSUER` | If distinct from client id for JWT `iss` (optional; omit if same) |
+| `REVOLUT_JWT_KID` | Optional. If Revolut shows a certificate **key id**, set it (adds JWT header `kid`). If there is no id in the UI, leave unset—the client assertion is still built and sent with `grant_type=refresh_token` per Revolut’s token `curl`. |
+| `REVOLUT_ISSUER` | JWT claim `iss`. Defaults to **`REVOLUT_CLIENT_ID`** if unset. If your working manual assertion uses a different `iss` (as in Revolut’s examples), set this to **that exact value**; **`sub`** is always **`REVOLUT_CLIENT_ID`** in code. |
 | `REVOLUT_JWT_AUDIENCE` | Override JWT `aud` if token exchange fails (default `https://revolut.com`) |
 | `REVOLUT_PRIVATE_KEY_PATH` | Filesystem path to PEM private key (server only) |
 | `REVOLUT_PRIVATE_KEY_PASSPHRASE` | If the key is encrypted (optional) |

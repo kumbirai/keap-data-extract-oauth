@@ -54,3 +54,28 @@ def test_build_client_assertion_jwt_claims(tmp_path):
     headers = jwt.get_unverified_header(token)
     assert headers["kid"] == "kid-1"
     assert headers["alg"] == JWT_ALGORITHM
+
+
+def test_build_client_assertion_jwt_omits_kid_header_when_unset(tmp_path):
+    path, private_key = _temp_key_path(tmp_path)
+    settings = RevolutExtractSettings(
+        client_id="cid",
+        issuer="cid",
+        jwt_audience="https://revolut.com",
+        jwt_kid=None,
+        private_key_path=str(path),
+        private_key_passphrase=None,
+        refresh_token="rt",
+        authorization_code=None,
+        access_token=None,
+        use_sandbox=True,
+        transaction_lookback_days=7,
+        initial_history_days=30,
+        list_count=100,
+        store_raw_payload=False,
+        account_allowlist=None,
+    )
+    token = build_client_assertion_jwt(settings, private_key)
+    headers = jwt.get_unverified_header(token)
+    assert "kid" not in headers
+    assert headers["alg"] == JWT_ALGORITHM

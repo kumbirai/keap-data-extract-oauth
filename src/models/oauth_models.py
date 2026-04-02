@@ -43,6 +43,7 @@ class ExtractionState(Base):
     entity_type = Column(String(100), nullable=False, unique=True, index=True)
     total_records_processed = Column(Integer, default=0)
     api_offset = Column(Integer, default=0)
+    api_page_token = Column(Text, nullable=True)
     last_loaded = Column(DateTime(timezone=True))
     last_successful_extraction = Column(DateTime(timezone=True))
     extraction_status = Column(PostgresEnum(ExtractionStatus, name='extractionstatus', values_callable=lambda obj: [e.value for e in obj], create_type=False), default=ExtractionStatus.PENDING, index=True)

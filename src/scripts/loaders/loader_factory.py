@@ -23,6 +23,7 @@ from .subscription_loader import SubscriptionLoader
 from .tags_loader import TagsLoader
 from .task_loader import TaskLoader
 
+from src.keap_v2.constants import KEAP_V2_LOADER_CHOICES
 from src.revolut.constants import REVOLUT_ENTITY_TYPES
 from src.stripe.constants import STRIPE_ALL_ENTITY_TYPE, STRIPE_ENTITY_TYPES
 
@@ -89,6 +90,7 @@ class LoaderFactory:
             + list(STRIPE_ENTITY_TYPES)
             + [STRIPE_ALL_ENTITY_TYPE]
             + list(REVOLUT_ENTITY_TYPES)
+            + list(KEAP_V2_LOADER_CHOICES)
         )
         return sorted(combined)
 

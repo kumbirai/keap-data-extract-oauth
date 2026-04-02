@@ -1,0 +1,47 @@
+"""Keap v2 extract entity_type names (extraction_state + CLI)."""
+
+KEAP_V2_ALL = "keap_v2_all"
+
+KEAP_V2_CONTACT_LINK_TYPES = "keap_v2_contact_link_types"
+KEAP_V2_COMPANIES = "keap_v2_companies"
+KEAP_V2_AUTOMATION_CATEGORIES = "keap_v2_automation_categories"
+KEAP_V2_AUTOMATIONS = "keap_v2_automations"
+KEAP_V2_CATEGORY_DISCOUNTS = "keap_v2_category_discounts"
+KEAP_V2_PRODUCT_DISCOUNTS = "keap_v2_product_discounts"
+KEAP_V2_ORDER_TOTAL_DISCOUNTS = "keap_v2_order_total_discounts"
+KEAP_V2_FREE_TRIAL_DISCOUNTS = "keap_v2_free_trial_discounts"
+KEAP_V2_SHIPPING_DISCOUNTS = "keap_v2_shipping_discounts"
+KEAP_V2_LEAD_SOURCE_CATEGORIES = "keap_v2_lead_source_categories"
+KEAP_V2_LEAD_SOURCES = "keap_v2_lead_sources"
+KEAP_V2_LEAD_SOURCE_EXPENSES = "keap_v2_lead_source_expenses"
+KEAP_V2_LEAD_SOURCE_RECURRING_EXPENSES = "keap_v2_lead_source_recurring_expenses"
+KEAP_V2_LEAD_SOURCE_RECURRING_EXPENSE_INCURRED = "keap_v2_lead_source_recurring_expense_incurred"
+KEAP_V2_CONTACT_LINKS = "keap_v2_contact_links"
+KEAP_V2_CONTACT_LEAD_SCORES = "keap_v2_contact_lead_scores"
+KEAP_V2_CAMPAIGN_GOALS = "keap_v2_campaign_goals"
+KEAP_V2_CAMPAIGN_SEQUENCES = "keap_v2_campaign_sequences"
+KEAP_V2_AFFILIATE_REFERRALS = "keap_v2_affiliate_referrals"
+
+KEAP_V2_ENTITY_TYPES = (
+    KEAP_V2_CONTACT_LINK_TYPES,
+    KEAP_V2_COMPANIES,
+    KEAP_V2_AUTOMATION_CATEGORIES,
+    KEAP_V2_AUTOMATIONS,
+    KEAP_V2_CATEGORY_DISCOUNTS,
+    KEAP_V2_PRODUCT_DISCOUNTS,
+    KEAP_V2_ORDER_TOTAL_DISCOUNTS,
+    KEAP_V2_FREE_TRIAL_DISCOUNTS,
+    KEAP_V2_SHIPPING_DISCOUNTS,
+    KEAP_V2_LEAD_SOURCE_CATEGORIES,
+    KEAP_V2_LEAD_SOURCES,
+    KEAP_V2_LEAD_SOURCE_EXPENSES,
+    KEAP_V2_LEAD_SOURCE_RECURRING_EXPENSES,
+    KEAP_V2_LEAD_SOURCE_RECURRING_EXPENSE_INCURRED,
+    KEAP_V2_CONTACT_LINKS,
+    KEAP_V2_CONTACT_LEAD_SCORES,
+    KEAP_V2_CAMPAIGN_GOALS,
+    KEAP_V2_CAMPAIGN_SEQUENCES,
+    KEAP_V2_AFFILIATE_REFERRALS,
+)
+
+KEAP_V2_LOADER_CHOICES = (KEAP_V2_ALL,) + KEAP_V2_ENTITY_TYPES

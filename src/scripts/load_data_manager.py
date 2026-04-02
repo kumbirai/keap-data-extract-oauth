@@ -160,6 +160,16 @@ class DataLoadManager:
                 from src.revolut.orchestrator import run_revolut_entity
 
                 return run_revolut_entity(self.db, self.checkpoint_manager, entity_type, update)
+            if entity_type.startswith("keap_v2_"):
+                from src.keap_v2.orchestrator import run_keap_v2_entity
+
+                return run_keap_v2_entity(
+                    self.db,
+                    self.checkpoint_manager,
+                    self.client.token_manager,
+                    entity_type,
+                    update,
+                )
             loader = LoaderFactory.create_loader(entity_type, self.client, self.db, self.checkpoint_manager)
             return loader.load_all(update=update)
         except ValueError as e:
@@ -208,6 +218,22 @@ class DataLoadManager:
                 logger.error(f"Error loading {entity_type}: {e}", exc_info=True)
                 # Continue with other entities instead of failing completely
                 total_result.failed_count += 1
+
+        try:
+            from src.keap_v2.orchestrator import run_keap_v2_extract
+
+            v2_result = run_keap_v2_extract(
+                self.db,
+                self.checkpoint_manager,
+                self.client.token_manager,
+                update,
+            )
+            total_result.total_records += v2_result.total_records
+            total_result.success_count += v2_result.success_count
+            total_result.failed_count += v2_result.failed_count
+        except Exception as e:
+            logger.error("Keap v2 extract failed: %s", e, exc_info=True)
+            total_result.failed_count += 1
 
         try:
             from src.stripe.orchestrator import run_stripe_extract

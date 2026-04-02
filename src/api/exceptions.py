@@ -30,6 +30,11 @@ class KeapNotFoundError(KeapAPIError):
     pass
 
 
+class KeapForbiddenError(KeapAPIError):
+    """Raised when the API returns 403 (often missing OAuth read scope)."""
+    pass
+
+
 class KeapServerError(KeapAPIError):
     """Raised when the Keap server returns an error"""
     pass

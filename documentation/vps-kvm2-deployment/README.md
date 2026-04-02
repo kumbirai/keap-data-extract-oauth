@@ -564,6 +564,7 @@ For a single analyst and typical KVM 2 setup, **SSH tunnel + Import** (refresh w
 
 ## Related documentation
 
+- [connect-pgadmin-windows.md](connect-pgadmin-windows.md) — pgAdmin on Windows via SSH tunnel or direct TCP
 - [08-deployment-guide.md](../08-deployment-guide.md) — general deployment
 - [06-security-considerations.md](../06-security-considerations.md) — security context
 - Repository [README.md](../../README.md) — usage and structure

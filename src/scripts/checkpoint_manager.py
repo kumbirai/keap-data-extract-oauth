@@ -12,6 +12,7 @@ from src.models.oauth_models import ExtractionState, ExtractionStatus
 logger = logging.getLogger(__name__)
 
 _CHECKPOINT_JSON_UNSET = object()
+_API_PAGE_TOKEN_UNSET = object()
 
 
 class CheckpointManager:
@@ -87,7 +88,9 @@ class CheckpointManager:
 
                 if 'checkpoint_json' in checkpoint_data:
                     extraction_state.checkpoint_json = checkpoint_data['checkpoint_json']
-                
+                if 'api_page_token' in checkpoint_data:
+                    extraction_state.api_page_token = checkpoint_data['api_page_token']
+
                 extraction_state.updated_at = datetime.now(timezone.utc)
             else:
                 # Create new state
@@ -105,6 +108,7 @@ class CheckpointManager:
                     entity_type=entity_type,
                     total_records_processed=checkpoint_data.get('total_records_processed', 0),
                     api_offset=checkpoint_data.get('api_offset', 0),
+                    api_page_token=checkpoint_data.get('api_page_token'),
                     last_loaded=last_loaded,
                     last_successful_extraction=datetime.now(timezone.utc) if checkpoint_data.get('completed', False) else None,
                     extraction_status=status,
@@ -142,6 +146,7 @@ class CheckpointManager:
                     'error_count': extraction_state.error_count,
                     'last_error_message': extraction_state.last_error_message,
                     'checkpoint_json': extraction_state.checkpoint_json,
+                    'api_page_token': extraction_state.api_page_token,
                 }
         except Exception as e:
             logger.error(f"Error loading checkpoint from database for {entity_type}: {e}")
@@ -157,6 +162,7 @@ class CheckpointManager:
         error_count: int = 0,
         last_error_message: Optional[str] = None,
         checkpoint_json: Any = _CHECKPOINT_JSON_UNSET,
+        api_page_token: Any = _API_PAGE_TOKEN_UNSET,
     ) -> None:
         """Save checkpoint with total records processed and API offset.
         
@@ -168,6 +174,7 @@ class CheckpointManager:
             error_count: Number of errors encountered
             last_error_message: Last error message encountered
             checkpoint_json: Optional JSON blob (e.g. Stripe cursors). If omitted, existing value is kept on update.
+            api_page_token: Keap v2 cursor token for list syncs; pass None to clear. If omitted, DB/file merge for keap_v2_*.
         """
         if entity_type not in self.checkpoints:
             self.checkpoints[entity_type] = {
@@ -198,10 +205,21 @@ class CheckpointManager:
 
         if checkpoint_json is not _CHECKPOINT_JSON_UNSET:
             self.checkpoints[entity_type]['checkpoint_json'] = checkpoint_json
-        elif (entity_type.startswith('stripe_') or entity_type.startswith('revolut_')) and self.db:
+        elif (
+            entity_type.startswith('stripe_')
+            or entity_type.startswith('revolut_')
+            or entity_type.startswith('keap_v2_')
+        ) and self.db:
             db_row = self._load_from_database(entity_type)
             if db_row and db_row.get('checkpoint_json') is not None:
                 self.checkpoints[entity_type]['checkpoint_json'] = db_row['checkpoint_json']
+
+        if api_page_token is not _API_PAGE_TOKEN_UNSET:
+            self.checkpoints[entity_type]['api_page_token'] = api_page_token
+        elif entity_type.startswith('keap_v2_') and self.db:
+            db_row = self._load_from_database(entity_type)
+            if db_row and db_row.get('api_page_token') is not None:
+                self.checkpoints[entity_type]['api_page_token'] = db_row['api_page_token']
 
         # Save to file with error handling
         try:
@@ -294,6 +312,13 @@ class CheckpointManager:
             return db_checkpoint['checkpoint_json']
         file_blob = self.checkpoints.get(entity_type, {}).get('checkpoint_json')
         return file_blob
+
+    def get_api_page_token(self, entity_type: str) -> Optional[str]:
+        """Return Keap v2 list cursor (database first, then file)."""
+        db_checkpoint = self._load_from_database(entity_type)
+        if db_checkpoint and db_checkpoint.get('api_page_token') is not None:
+            return db_checkpoint['api_page_token']
+        return self.checkpoints.get(entity_type, {}).get('api_page_token')
 
     def clear_checkpoints(self) -> None:
         """Clear all checkpoints from both file and database."""

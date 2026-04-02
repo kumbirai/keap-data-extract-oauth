@@ -8,6 +8,29 @@ from src.models.oauth_models import OAuthToken, ExtractionState
 # Revolut BI tables
 from src.models.revolut_models import RevolutAccount, RevolutTransaction
 
+# Keap REST v2 BI tables
+from src.models.keap_v2_models import (
+    KeapV2AffiliateReferral,
+    KeapV2Automation,
+    KeapV2AutomationCategory,
+    KeapV2CampaignGoal,
+    KeapV2CampaignSequenceV2,
+    KeapV2CategoryDiscount,
+    KeapV2Company,
+    KeapV2ContactLeadScore,
+    KeapV2ContactLink,
+    KeapV2ContactLinkType,
+    KeapV2FreeTrialDiscount,
+    KeapV2LeadSource,
+    KeapV2LeadSourceCategory,
+    KeapV2LeadSourceExpense,
+    KeapV2LeadSourceRecurringExpense,
+    KeapV2LeadSourceRecurringExpenseIncurred,
+    KeapV2OrderTotalDiscount,
+    KeapV2ProductDiscount,
+    KeapV2ShippingDiscount,
+)
+
 # Stripe BI tables
 from src.models.stripe_models import (
     StripeBalanceTransaction,
@@ -45,6 +68,25 @@ from src.models.entity_models import (
 
 __all__ = [
     'Base', 'OAuthToken', 'ExtractionState',
+    'KeapV2AffiliateReferral',
+    'KeapV2Automation',
+    'KeapV2AutomationCategory',
+    'KeapV2CampaignGoal',
+    'KeapV2CampaignSequenceV2',
+    'KeapV2CategoryDiscount',
+    'KeapV2Company',
+    'KeapV2ContactLeadScore',
+    'KeapV2ContactLink',
+    'KeapV2ContactLinkType',
+    'KeapV2FreeTrialDiscount',
+    'KeapV2LeadSource',
+    'KeapV2LeadSourceCategory',
+    'KeapV2LeadSourceExpense',
+    'KeapV2LeadSourceRecurringExpense',
+    'KeapV2LeadSourceRecurringExpenseIncurred',
+    'KeapV2OrderTotalDiscount',
+    'KeapV2ProductDiscount',
+    'KeapV2ShippingDiscount',
     'RevolutAccount', 'RevolutTransaction',
     'StripeBalanceTransaction', 'StripeCharge', 'StripeCoupon', 'StripeCreditNote',
     'StripeCustomer', 'StripeDispute', 'StripeInvoice', 'StripeInvoiceLineItem',

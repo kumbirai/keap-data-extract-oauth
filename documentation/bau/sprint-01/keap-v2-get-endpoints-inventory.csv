@@ -1,0 +1,113 @@
+api_class,operation,method,path,description,v1_domain_overlap,overlapping_v1_entities,v2_domain_hints
+AffiliateApi,get_affiliate,GET,/rest/v2/affiliates/{id},Retrieve an Affiliate,yes,affiliates,
+AffiliateApi,get_affiliate_commission_total,GET,/rest/v2/affiliates/{affiliate_id}/commissionTotal,Retrieve Affiliate Commission Earned and View LedgerURl for portal,yes,affiliates,
+AffiliateApi,get_affiliate_commissions,GET,/rest/v2/affiliates/{affiliate_id}:commissions,Retrieve Affiliate Commissions,yes,affiliates,
+AffiliateApi,get_affiliate_custom_fields,GET,/rest/v2/affiliates/model,Retrieve Affiliate Model,yes,affiliates|custom_fields,
+AffiliateApi,get_commission_program,GET,/rest/v2/affiliates/commissionPrograms/{commission_program_id},Retrieve a Commission Program,yes,affiliates,
+AffiliateApi,get_redirect_link,GET,/rest/v2/affiliates/redirects/{redirect_id},Retrieve an Affiliate Link,yes,affiliates,
+AffiliateApi,get_referrals_by_affiliate_id,GET,/rest/v2/affiliates/{affiliate_id}/referrals,Retrieve Affiliate Referrals,yes,affiliates,
+AffiliateApi,list_affiliate,GET,/rest/v2/affiliates,List Affiliates,yes,affiliates,
+AffiliateApi,list_affiliate_commission_programs,GET,/rest/v2/affiliates/commissionPrograms,List Affiliate Commission Programs,yes,affiliates,
+AffiliateApi,list_affiliate_links,GET,/rest/v2/affiliates/redirects,List Affiliate Links,yes,affiliates,
+AffiliateApi,list_affiliate_payments,GET,/rest/v2/affiliates/{affiliate_id}/payments,List Affiliate Payments,yes,affiliates,
+AffiliateApi,list_commission_program_resources,GET,/rest/v2/affiliates/commissionPrograms/{commission_program_id}/resources,Retrieve Commission Program Resources,yes,affiliates,
+AffiliateApi,list_summaries,GET,/rest/v2/affiliates/summaries,List Affiliate Summaries,yes,affiliates,
+AutomationApi,get_automation,GET,/rest/v2/automations/{automation_id},Retrieve an Automation,no,,automations
+AutomationApi,list_all_automation_ids,GET,/rest/v2/automations/ids,List Automations Ids,no,,automations
+AutomationApi,list_automations,GET,/rest/v2/automations,List Automations,no,,automations
+AutomationCategoryApi,list_categories,GET,/rest/v2/automationCategory,List automation categories,no,,automationcategory
+BusinessProfileApi,get_business_profile,GET,/rest/v2/businessProfile,Retrieve Business Profile,no,,businessprofile
+CampaignApi,get_campaign,GET,/rest/v2/campaigns/{campaign_id},Retrieve a Campaign,yes,campaigns,
+CampaignApi,get_campaign_goals,GET,/rest/v2/campaigns/{campaign_id}/goals,Retrieve a list of Goals for a Campaign,yes,campaigns,
+CampaignApi,get_campaign_sequences,GET,/rest/v2/campaigns/{campaign_id}/sequences,Retrieve a list of Sequences for a Campaign,yes,campaigns,
+CampaignApi,list_campaigns,GET,/rest/v2/campaigns,List Campaigns,yes,campaigns,
+CategoryDiscountsApi,get_category_discount,GET,/rest/v2/discounts/productCategories/{discount_id},Retrieve a Category Discount,no,,discounts|productcategories
+CategoryDiscountsApi,list_category_discounts,GET,/rest/v2/discounts/productCategories,List Category Discounts,no,,discounts|productcategories
+CompanyApi,get_company,GET,/rest/v2/companies/{company_id},Retrieve a Company,no,,companies
+CompanyApi,list_companies,GET,/rest/v2/companies,List Companies,no,,companies
+CompanyApi,retrieve_company_custom_field_model,GET,/rest/v2/companies/model,Retrieve Company Custom Field Model,yes,custom_fields,companies
+ContactApi,get_contact,GET,/rest/v2/contacts/{contact_id},Retrieve a Contact,yes,contacts,
+ContactApi,list_contact_link_types,GET,/rest/v2/contacts/links/types,List Contact Link types,yes,contacts,
+ContactApi,list_contact_links,GET,/rest/v2/contacts/{contact_id}/links,List Linked Contacts,yes,contacts,
+ContactApi,list_contacts,GET,/rest/v2/contacts,List Contacts,yes,contacts,
+ContactApi,list_tags_for_contact,GET,/rest/v2/contacts/{contact_id}/tags,List Applied Tags,yes,contacts|tags,
+ContactApi,retrieve_contact_model,GET,/rest/v2/contacts/model,Retrieve Contact Model,yes,contacts|custom_fields,
+EmailApi,get_email,GET,/rest/v2/emails/{id},Retrieve an Email,no,,emails
+EmailApi,get_email_template,GET,/rest/v2/emails/templates/{email_template_id},Retrieve an email template,no,,emails
+EmailApi,list_emails,GET,/rest/v2/emails,List Emails,no,,emails
+EmailAddressApi,get_email_address_status,GET,/rest/v2/emailAddresses/{email}/status,Retrieve an Email Address status,no,,
+FilesApi,get_file,GET,/rest/v2/files/{file_id},Retrieve a file,no,,files
+FilesApi,get_file_data,GET,/rest/v2/files/{file_id}:data,Retrieve a file&#39;s data,no,,files
+FilesApi,list_files,GET,/rest/v2/files,List all files,no,,files
+FreeTrialDiscountsApi,get_free_trial_discount,GET,/rest/v2/discounts/freeTrials/{discount_id},Retrieve a Subscription Free Trial Discount,no,,discounts
+FreeTrialDiscountsApi,list_free_trial_discounts,GET,/rest/v2/discounts/freeTrials,List all Subscription Free Trial Discounts,no,,discounts
+LeadScoreApi,get_lead_score_details,GET,/rest/v2/contacts/{contact_id}/leadScore,Retrieve Lead Score of a Contact,yes,contacts,
+LeadSourceCategoriesApi,get_lead_source_category,GET,/rest/v2/leadSourceCategories/{lead_source_category_id},Retrieve a Lead Source Category,no,,leadsource
+LeadSourceCategoriesApi,list_lead_source_categories,GET,/rest/v2/leadSourceCategories,List Lead Source Categories,no,,leadsource
+LeadSourceExpensesApi,get_lead_source_expense,GET,/rest/v2/leadSources/{lead_source_id}/expenses/{lead_source_expense_id},Retrieve a Lead Source Expense,no,,leadsource
+LeadSourceExpensesApi,list_lead_source_expenses,GET,/rest/v2/leadSources/{lead_source_id}/expenses,List Lead Source Expenses,no,,leadsource
+LeadSourceRecurringExpensesApi,get_lead_source_recurring_expense,GET,/rest/v2/leadSources/{lead_source_id}/recurringExpenses/{lead_source_recurring_expense_id},Retrieve a Lead Source Recurring Expense,no,,leadsource
+LeadSourceRecurringExpensesApi,list_expenses_incurred_from_lead_source_recurring_expense,GET,/rest/v2/leadSources/{lead_source_id}/recurringExpenses/{lead_source_recurring_expense_id}/expenses,Retrieves a list of expenses incurred from a recurring expense,no,,leadsource
+LeadSourceRecurringExpensesApi,list_lead_source_recurring_expenses,GET,/rest/v2/leadSources/{lead_source_id}/recurringExpenses,Retrieves a list of lead source recurring expenses,no,,leadsource
+LeadSourcesApi,get_lead_source,GET,/rest/v2/leadSources/{lead_source_id},Retrieve a Lead Source,no,,leadsource
+LeadSourcesApi,list_lead_sources,GET,/rest/v2/leadSources,List Lead Sources,no,,leadsource
+LocaleApi,get_country_by_code,GET,/rest/v2/locales/countries/{country_code},Get Country,no,,locales
+LocaleApi,get_province_by_code,GET,/rest/v2/locales/countries/{country_code}/provinces/{province_code},Get Province,no,,locales
+LocaleApi,list_countries,GET,/rest/v2/locales/countries,List Countries,no,,locales
+LocaleApi,list_provinces_for_country,GET,/rest/v2/locales/countries/{country_code}/provinces,List a Country&#39;s Provinces,no,,locales
+MerchantsApi,list_merchants,GET,/rest/v2/merchants,List Merchant accounts,no,,merchants
+NoteApi,get_note,GET,/rest/v2/contacts/{contact_id}/notes/{note_id},Retrieve a Note,yes,contacts|notes,
+NoteApi,list_note_templates,GET,/rest/v2/notes/templates,Retrieve Note Templates,yes,notes,
+NoteApi,list_notes,GET,/rest/v2/contacts/{contact_id}/notes,List Notes,yes,contacts|notes,
+NoteApi,retrieve_note_model,GET,/rest/v2/notes/model,Retrieve Note Model,yes,custom_fields|notes,
+OpportunityApi,get_opportunity,GET,/rest/v2/opportunities/{opportunity_id},Retrieve a Opportunity,yes,opportunities,
+OpportunityApi,get_opportunity_stage,GET,/rest/v2/opportunities/stages/{stage_id},Retrieve an Opportunity Stage,yes,opportunities,
+OpportunityApi,list_opportunities,GET,/rest/v2/opportunities,List Opportunities,yes,opportunities,
+OpportunityApi,list_opportunity_stages,GET,/rest/v2/opportunities/stages,List of Opportunity Stages,yes,opportunities,
+OrderTotalDiscountsApi,get_order_total_discount,GET,/rest/v2/discounts/orderTotals/{discount_id},Retrieve an Order Total Discount,no,,discounts
+OrderTotalDiscountsApi,list_order_total_discounts,GET,/rest/v2/discounts/orderTotals,List all Order Total Discounts,no,,discounts
+OrdersApi,get_order,GET,/rest/v2/orders/{order_id},Retrieve an Order,yes,orders,
+OrdersApi,list_order_payments,GET,/rest/v2/orders/{order_id}/payments,Retrieve Order Payments,yes,orders,
+OrdersApi,list_orders,GET,/rest/v2/orders,List orders,yes,orders,
+OrdersApi,retrieve_order_custom_field_model,GET,/rest/v2/orders/model,Retrieve Order Custom Field Model,yes,custom_fields|orders,
+PaymentMethodsApi,list_payment_methods,GET,/rest/v2/contacts/{contact_id}/paymentMethods,List of Payment Methods,yes,contacts,paymentmethods
+ProductCategoriesApi,get_product_category,GET,/rest/v2/productCategories/{category_id},Get a Product Category,no,,productcategories
+ProductCategoriesApi,list_product_categories,GET,/rest/v2/productCategories,List all Product Categories,no,,productcategories
+ProductDiscountsApi,get_product_discount,GET,/rest/v2/discounts/products/{discount_id},Retrieve a Product Discount,yes,products,discounts
+ProductDiscountsApi,list_product_discounts,GET,/rest/v2/discounts/products,List all Product Discounts,yes,products,discounts
+ProductInterestBundlesApi,get_product_interest_bundle,GET,/rest/v2/productInterestBundles/{id},Get a Product Interest Bundle,no,,productinterest
+ProductInterestBundlesApi,list_product_interest_bundles,GET,/rest/v2/productInterestBundles,List Product Interest Bundles,no,,productinterest
+ProductsApi,get_product,GET,/rest/v2/products/{product_id},Get a Product,yes,products,
+ProductsApi,get_product_option,GET,/rest/v2/products/{product_id}/options/{product_option_id},Get Product Option,yes,products,
+ProductsApi,list_product_options,GET,/rest/v2/products/{product_id}/options,List Product Options,yes,products,
+ProductsApi,list_products,GET,/rest/v2/products,List Products,yes,products,
+ReportingApi,list_reports,GET,/rest/v2/reporting/reports,List Reports,no,,reporting
+ReportingApi,retrieve_report,GET,/rest/v2/reporting/reports/{report_id},Retrieve Report,no,,reporting
+SettingsApi,get_application_configurations,GET,/rest/v2/settings/applications:getConfiguration,Get Application Configuration,no,,settings
+SettingsApi,get_contact_option_types,GET,/rest/v2/settings/contactOptionTypes,Get Contact Option types,no,,settings
+SettingsApi,is_application_enabled,GET,/rest/v2/settings/applications:isEnabled,Get Application Status,no,,settings
+ShippingApi,list_shipping_methods,GET,/rest/v2/shipping,List Shipping methods,no,,
+ShippingDiscountsApi,get_shipping_discount,GET,/rest/v2/discounts/shipping/{discount_id},Retrieve a Shipping Discount,no,,discounts
+ShippingDiscountsApi,list_shipping_discounts,GET,/rest/v2/discounts/shipping,List all Shipping Discounts,no,,discounts
+SubscriptionPlansApi,fetch_subscription_plan,GET,/rest/v2/products/{product_id}/subscriptions/{subscription_plan_id},Get Subscription Plan,yes,products|subscriptions,
+SubscriptionPlansApi,list_subscription_plans,GET,/rest/v2/products/{product_id}/subscriptions,List Subscription Plans,yes,products|subscriptions,
+SubscriptionsApi,get_subscription,GET,/rest/v2/subscriptions/{subscription_id},Retrieve a Subscription,yes,subscriptions,
+SubscriptionsApi,list_subscriptions,GET,/rest/v2/subscriptions,List Subscriptions,yes,subscriptions,
+SubscriptionsApi,retrieve_subscription_custom_field_model,GET,/rest/v2/subscriptions/model,Retrieve Subscription Custom Field Model,yes,custom_fields|subscriptions,
+TagsApi,get_category,GET,/rest/v2/tags/categories/{tag_category_id},Retrieve a Tag Category,yes,tags,
+TagsApi,get_tag,GET,/rest/v2/tags/{tag_id},Retrieve a Tag,yes,tags,
+TagsApi,list_companies_for_tag_id,GET,/rest/v2/tags/{tag_id}/companies,List Tagged Companies,yes,tags,companies
+TagsApi,list_contacts_with_tag_id,GET,/rest/v2/tags/{tag_id}/contacts,List Tagged Contacts,yes,contacts|tags,
+TagsApi,list_tag_categories,GET,/rest/v2/tags/categories,List Tag Categories,yes,tags,
+TagsApi,list_tags,GET,/rest/v2/tags,List Tags,yes,tags,
+TaskApi,get_task,GET,/rest/v2/tasks/{task_id},Retrieve a Task,yes,tasks,
+TaskApi,list_tasks,GET,/rest/v2/tasks,List Tasks,yes,tasks,
+TaskApi,retrieve_task_model,GET,/rest/v2/tasks/model,Retrieve Task Model,yes,custom_fields|tasks,
+UserGroupsApi,get_user_group,GET,/rest/v2/userGroups/{user_group_id},Retrieve a User Group,no,,
+UserGroupsApi,list_user_groups,GET,/rest/v2/userGroups,List User Groups,no,,
+UsersApi,get_user_by_id,GET,/rest/v2/users/{user_id},Get User,no,,
+UsersApi,get_user_info,GET,/rest/v2/oauth/connect/userinfo,Retrieve User Info,no,,
+UsersApi,get_user_signature,GET,/rest/v2/users/{user_id}/signature,Get User email signature,no,,
+UsersApi,list_paginated_users,GET,/rest/v2/users,List Users,no,,
+WebformsApi,get_html,GET,/rest/v2/webforms/{webform_id}:data,Get Webform HTML,no,,
+WebformsApi,list_webforms,GET,/rest/v2/webforms,List Webforms with filter,no,,

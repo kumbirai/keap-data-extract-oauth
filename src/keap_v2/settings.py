@@ -43,6 +43,7 @@ class KeapV2ExtractSettings:
     crm_base_url: str
     page_size: int
     fan_out_delay_seconds: float
+    lead_score_max_attempts: int
 
     @classmethod
     def from_env(cls) -> "KeapV2ExtractSettings":
@@ -51,4 +52,5 @@ class KeapV2ExtractSettings:
             crm_base_url=os.getenv("KEAP_REST_CRM_BASE_URL", DEFAULT_CRM_BASE_URL).rstrip("/"),
             page_size=_positive_int("KEAP_V2_PAGE_SIZE", 100),
             fan_out_delay_seconds=_non_negative_float("KEAP_V2_FAN_OUT_DELAY_SECONDS", 0.0),
+            lead_score_max_attempts=_positive_int("KEAP_V2_LEAD_SCORE_MAX_ATTEMPTS", 3),
         )

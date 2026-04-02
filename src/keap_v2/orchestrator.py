@@ -5,7 +5,12 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Type
 
 from sqlalchemy.orm import Session
 
-from src.api.exceptions import KeapBadRequestError, KeapForbiddenError, KeapNotFoundError
+from src.api.exceptions import (
+    KeapBadRequestError,
+    KeapForbiddenError,
+    KeapNotFoundError,
+    KeapServerError,
+)
 from src.auth.token_manager import TokenManager
 from src.models.entity_models import Affiliate, Campaign, Contact
 from src.models.keap_v2_models import (
@@ -330,14 +335,35 @@ def sync_contact_lead_scores(
     state = fanout_state(checkpoint_manager.get_checkpoint_json(entity_type))
     last_done = int(state.get("last_parent_id") or 0)
     total = checkpoint_manager.get_checkpoint(entity_type)
+    skipped = 0
     now = touch_now()
     try:
         q = session.query(Contact.id).filter(Contact.id > last_done).order_by(Contact.id)
         for (cid,) in q.all():
             _delay(settings)
             try:
-                data = with_keap_backoff(lambda i=cid: client.get(f"contacts/{i}/leadScore", {}))
+                data = with_keap_backoff(
+                    lambda i=cid: client.get(f"contacts/{i}/leadScore", {}),
+                    max_attempts=settings.lead_score_max_attempts,
+                )
             except (KeapNotFoundError, KeapBadRequestError):
+                last_done = cid
+                _fanout_save(
+                    checkpoint_manager,
+                    entity_type,
+                    total,
+                    last_parent_id=last_done,
+                    completed=False,
+                )
+                continue
+            except KeapServerError as e:
+                logger.warning(
+                    "Keap v2 leadScore skipped for contact %s after %s attempts (Keap 5xx): %s",
+                    cid,
+                    settings.lead_score_max_attempts,
+                    e,
+                )
+                skipped += 1
                 last_done = cid
                 _fanout_save(
                     checkpoint_manager,
@@ -365,7 +391,13 @@ def sync_contact_lead_scores(
             last_parent_id=last_done,
             completed=True,
         )
-        return LoadResult(total, total, 0)
+        if skipped:
+            logger.info(
+                "Keap v2 %s finished with %s contact(s) skipped (leadScore 5xx).",
+                entity_type,
+                skipped,
+            )
+        return LoadResult(total, total, skipped)
     except KeapForbiddenError:
         logger.error("Keap v2 %s skipped after 403 (check OAuth scopes).", entity_type)
         return LoadResult(total, 0, 1)

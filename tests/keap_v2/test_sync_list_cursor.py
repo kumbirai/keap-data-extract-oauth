@@ -30,6 +30,7 @@ def test_sync_list_cursor_pages_until_empty_token(mock_upsert):
         crm_base_url="https://example.com/crm",
         page_size=100,
         fan_out_delay_seconds=0.0,
+        lead_score_max_attempts=3,
     )
 
     result = sync_list_cursor(

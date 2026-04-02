@@ -5,7 +5,7 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Type
 
 from sqlalchemy.orm import Session
 
-from src.api.exceptions import KeapForbiddenError, KeapNotFoundError
+from src.api.exceptions import KeapBadRequestError, KeapForbiddenError, KeapNotFoundError
 from src.auth.token_manager import TokenManager
 from src.models.entity_models import Affiliate, Campaign, Contact
 from src.models.keap_v2_models import (
@@ -257,6 +257,13 @@ def sync_contact_links(
                     logger.debug("Contact %s links not found; skipping.", cid)
                     inner_token = None
                     break
+                except KeapBadRequestError:
+                    logger.warning(
+                        "Contact %s links: API returned 400 (invalid or unsupported id for v2); skipping.",
+                        cid,
+                    )
+                    inner_token = None
+                    break
                 except KeapForbiddenError:
                     raise
                 items = mappers.extract_list_items(data, "links", "linked_contacts", "contact_links")
@@ -330,7 +337,7 @@ def sync_contact_lead_scores(
             _delay(settings)
             try:
                 data = with_keap_backoff(lambda i=cid: client.get(f"contacts/{i}/leadScore", {}))
-            except KeapNotFoundError:
+            except (KeapNotFoundError, KeapBadRequestError):
                 last_done = cid
                 _fanout_save(
                     checkpoint_manager,
@@ -409,7 +416,7 @@ def _sync_campaign_children(
                     data = with_keap_backoff(
                         lambda p=params, c=camp_id: client.get(f"campaigns/{c}/{subpath}", p)
                     )
-                except KeapNotFoundError:
+                except (KeapNotFoundError, KeapBadRequestError):
                     inner_token = None
                     break
                 items = mappers.extract_list_items(data, *item_keys)
@@ -498,7 +505,7 @@ def sync_affiliate_referrals(
                     data = with_keap_backoff(
                         lambda p=params, a=aid: client.get(f"affiliates/{a}/referrals", p)
                     )
-                except KeapNotFoundError:
+                except (KeapNotFoundError, KeapBadRequestError):
                     inner_token = None
                     break
                 items = mappers.extract_list_items(data, "referrals", "referral_list")
@@ -674,7 +681,7 @@ def _sync_per_lead_source_list(
                     data = with_keap_backoff(
                         lambda p=params, lid=ls_id: client.get(f"leadSources/{lid}/{path_suffix}", p)
                     )
-                except KeapNotFoundError:
+                except (KeapNotFoundError, KeapBadRequestError):
                     inner_token = None
                     break
                 items = mappers.extract_list_items(data, *item_keys)
@@ -747,7 +754,7 @@ def _sync_recurring_incurred(
                 path = f"leadSources/{ls_id}/recurringExpenses/{rec_id}/expenses"
                 try:
                     data = with_keap_backoff(lambda p=params: client.get(path, p))
-                except KeapNotFoundError:
+                except (KeapNotFoundError, KeapBadRequestError):
                     inner_token = None
                     break
                 items = mappers.extract_list_items(data, "expenses", "incurred_expenses")

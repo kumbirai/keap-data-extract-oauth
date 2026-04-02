@@ -7,6 +7,7 @@ import requests
 from .exceptions import (
     KeapAPIError,
     KeapAuthenticationError,
+    KeapBadRequestError,
     KeapForbiddenError,
     KeapNotFoundError,
     KeapQuotaExhaustedError,
@@ -117,6 +118,8 @@ def handle_keap_response(
             ) from e
         if status_code == 404:
             raise KeapNotFoundError(f"Resource not found: {response.url}") from e
+        if status_code == 400:
+            raise KeapBadRequestError(f"Bad request (400): {response.url} — {response.text}") from e
         if status_code == 429:
             logger.info(
                 "Rate limit exceeded. Headers: Quota=%s, Throttle=%s, Tenant=%s",

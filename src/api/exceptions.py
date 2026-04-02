@@ -30,6 +30,12 @@ class KeapNotFoundError(KeapAPIError):
     pass
 
 
+class KeapBadRequestError(KeapAPIError):
+    """Raised when the API returns 400 (e.g. invalid path id for v2 while v1 row still exists)."""
+
+    pass
+
+
 class KeapForbiddenError(KeapAPIError):
     """Raised when the API returns 403 (often missing OAuth read scope)."""
     pass

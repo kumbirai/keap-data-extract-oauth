@@ -374,7 +374,7 @@ def sync_contact_lead_scores(
                 )
                 continue
             row = mappers.map_contact_lead_score(cid, data, now)
-            upsert_simple_rows(session, KeapV2ContactLeadScore, [row])
+            upsert_composite_rows(session, KeapV2ContactLeadScore, [row], ("contact_id",))
             total += 1
             last_done = cid
             _fanout_save(

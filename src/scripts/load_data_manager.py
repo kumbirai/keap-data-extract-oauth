@@ -156,6 +156,10 @@ class DataLoadManager:
                 except RuntimeError as e:
                     logger.error("Stripe load cannot run: %s", e)
                     raise
+            if entity_type.startswith("revolut_merchant_"):
+                from src.revolut.merchant_orchestrator import run_revolut_merchant_entity
+
+                return run_revolut_merchant_entity(self.db, self.checkpoint_manager, entity_type, update)
             if entity_type.startswith("revolut_"):
                 from src.revolut.orchestrator import run_revolut_entity
 
@@ -255,6 +259,17 @@ class DataLoadManager:
             total_result.failed_count += revolut_result.failed_count
         except Exception as e:
             logger.error("Revolut extract failed: %s", e, exc_info=True)
+            total_result.failed_count += 1
+
+        try:
+            from src.revolut.merchant_orchestrator import run_revolut_merchant_extract
+
+            merchant_result = run_revolut_merchant_extract(self.db, self.checkpoint_manager, update)
+            total_result.total_records += merchant_result.total_records
+            total_result.success_count += merchant_result.success_count
+            total_result.failed_count += merchant_result.failed_count
+        except Exception as e:
+            logger.error("Revolut Merchant extract failed: %s", e, exc_info=True)
             total_result.failed_count += 1
 
         return total_result

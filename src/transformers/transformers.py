@@ -318,20 +318,39 @@ def transform_contact_with_related(api_data: Dict[str, Any], db_session=None) ->
                     logger.error(f"Error transforming tag for contact {contact.id}: {str(e)}")
 
         if 'custom_fields' in api_data:
-            for field_name, field_def in api_data['custom_fields'].items():
-                try:
-                    custom_field = transform_custom_field(field_name, field_def)
-                    if custom_field is None:
-                        continue
-                    if 'value' in field_def:
+            custom_fields_data = api_data['custom_fields']
+            if isinstance(custom_fields_data, list):
+                # v1 API format: list of {"id": <int>, "content": <value>}
+                for field_item in custom_fields_data:
+                    try:
+                        if not isinstance(field_item, dict) or 'id' not in field_item:
+                            continue
+                        content = field_item.get('content')
+                        if content is None:
+                            continue
                         custom_field_value = ContactCustomFieldValue(
-                            value=field_def['value'],
+                            value=str(content),
                             contact_id=contact.id,
-                            custom_field_id=custom_field.id
+                            custom_field_id=field_item['id']
                         )
                         contact.custom_field_values.append(custom_field_value)
-                except Exception as e:
-                    logger.error(f"Error transforming custom field {field_name} for contact {contact.id}: {str(e)}")
+                    except Exception as e:
+                        logger.error(f"Error transforming custom field {field_item.get('id')} for contact {contact.id}: {str(e)}")
+            elif isinstance(custom_fields_data, dict):
+                for field_name, field_def in custom_fields_data.items():
+                    try:
+                        custom_field = transform_custom_field(field_name, field_def)
+                        if custom_field is None:
+                            continue
+                        if 'value' in field_def:
+                            custom_field_value = ContactCustomFieldValue(
+                                value=field_def['value'],
+                                contact_id=contact.id,
+                                custom_field_id=custom_field.id
+                            )
+                            contact.custom_field_values.append(custom_field_value)
+                    except Exception as e:
+                        logger.error(f"Error transforming custom field {field_name} for contact {contact.id}: {str(e)}")
 
         if 'opportunities' in api_data:
             for opportunity in api_data['opportunities']:

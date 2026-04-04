@@ -173,6 +173,7 @@ class KeapClient(KeapBaseClient):
             if 'order' not in additional_params:
                 additional_params['order'] = 'id'
 
+            additional_params.setdefault('optional_properties', 'lead_source_id,custom_fields,job_title')
             params = self._prepare_params(limit=limit, offset=offset, since=since, **additional_params)
             response = self.get('contacts', params)
             
@@ -226,7 +227,8 @@ class KeapClient(KeapBaseClient):
 
     def get_contact(self, contact_id: int):
         """Get a single contact by ID with all related data."""
-        response = self.get(f'contacts/{contact_id}')
+        params = {'optional_properties': 'lead_source_id,custom_fields,job_title'}
+        response = self.get(f'contacts/{contact_id}', params)
         logger.debug(f"Raw contact API response: {response}")
         return transform_contact_with_related(response)
 

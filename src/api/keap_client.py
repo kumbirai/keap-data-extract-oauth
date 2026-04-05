@@ -383,6 +383,7 @@ class KeapClient(KeapBaseClient):
     # Opportunity Related Methods
     def get_opportunities(self, contact_id: Optional[int] = None, limit: int = 50, offset: int = 0, since: Optional[str] = None, db_session=None, **additional_params) -> Tuple[List, Dict[str, Any]]:
         """Get a list of opportunities."""
+        additional_params.setdefault('optional_properties', 'custom_fields')
         params = self._prepare_params(limit=limit, offset=offset, since=since, contact_id=contact_id, **additional_params)
         response = self.get('opportunities', params)
         return transform_list_response(response, transform_opportunity)
@@ -390,7 +391,8 @@ class KeapClient(KeapBaseClient):
     def get_opportunity(self, opportunity_id: int):
         """Get a single opportunity by ID."""
         try:
-            response = self.get(f'opportunities/{opportunity_id}')
+            params = {'optional_properties': 'custom_fields'}
+            response = self.get(f'opportunities/{opportunity_id}', params)
             return transform_opportunity(response)
         except Exception as e:
             logger.error(f"Error fetching opportunity {opportunity_id}: {str(e)}")
@@ -563,7 +565,8 @@ class KeapClient(KeapBaseClient):
 
     def get_campaign(self, campaign_id: int):
         """Get a single campaign by ID."""
-        response = self.get(f'campaigns/{campaign_id}')
+        params = {'optional_properties': 'goals,sequences'}
+        response = self.get(f'campaigns/{campaign_id}', params)
         return transform_campaign(response)
 
     # Subscription Related Methods

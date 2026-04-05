@@ -12,10 +12,11 @@ from src.models.entity_models import (
     AffiliateStatus, AffiliateSummary, BusinessGoal, Campaign, CampaignSequence, CampaignStatus,
     Contact, ContactAddress, ContactCustomFieldValue, ContactEmailStatus,
     ContactSourceType, CreditCard, CustomField, CustomFieldType, EmailAddress,
-    FaxNumber, Note, NoteType, Opportunity, Order, OrderItem, OrderPayment,
-    OrderSourceType, OrderStatus, OrderTransaction, PaymentGateway, PaymentPlan,
-    PhoneNumber, Product, Subscription, SubscriptionPlan, SubscriptionStatus,
-    Tag, TagCategory, Task, TaskPriority, TaskStatus
+    FaxNumber, Note, NoteType, Opportunity, OpportunityCustomFieldValue, Order,
+    OrderItem, OrderPayment, OrderSourceType, OrderStatus, OrderTransaction,
+    PaymentGateway, PaymentPlan, PhoneNumber, Product, Subscription,
+    SubscriptionPlan, SubscriptionStatus, Tag, TagCategory, Task, TaskPriority,
+    TaskStatus
 )
 
 logger = logging.getLogger(__name__)
@@ -591,7 +592,7 @@ def transform_applied_tag(api_data: Dict[str, Any]) -> Optional[Tag]:
 
 def transform_opportunity(api_data: Dict[str, Any]) -> Opportunity:
     """Transform opportunity data from API to Opportunity model."""
-    return Opportunity(
+    opportunity = Opportunity(
         id=api_data.get('id'),
         title=api_data.get('opportunity_title'),
         stage=api_data.get('stage'),
@@ -606,6 +607,25 @@ def transform_opportunity(api_data: Dict[str, Any]) -> Opportunity:
         owner_id=api_data.get('owner_id'),
         last_updated_utc_millis=api_data.get('last_updated_utc_millis')
     )
+
+    # v1 API returns custom_fields as list of {"id": <int>, "content": <value>}
+    if 'custom_fields' in api_data:
+        for field_item in api_data['custom_fields']:
+            try:
+                if not isinstance(field_item, dict) or 'id' not in field_item:
+                    continue
+                content = field_item.get('content')
+                if content is None:
+                    continue
+                opportunity.custom_field_values.append(OpportunityCustomFieldValue(
+                    value=str(content),
+                    opportunity_id=opportunity.id,
+                    custom_field_id=field_item['id']
+                ))
+            except Exception as e:
+                logger.error(f"Error transforming custom field {field_item.get('id')} for opportunity {opportunity.id}: {str(e)}")
+
+    return opportunity
 
 
 def transform_product(api_data: Dict[str, Any]) -> Product:
@@ -829,7 +849,7 @@ def transform_campaign(api_data: Dict[str, Any]) -> Campaign:
     """Transform campaign data from API to database model."""
     status = safe_enum_convert(api_data.get('status'), CampaignStatus)
 
-    return Campaign(
+    campaign = Campaign(
         id=api_data.get('id'),
         name=api_data.get('name'),
         description=api_data.get('description'),
@@ -837,6 +857,19 @@ def transform_campaign(api_data: Dict[str, Any]) -> Campaign:
         created_at=safe_parse_datetime(api_data.get('created_at')),
         modified_at=safe_parse_datetime(api_data.get('modified_at'))
     )
+
+    # sequences are only returned when optional_properties=sequences is requested
+    if 'sequences' in api_data:
+        for seq_data in api_data.get('sequences', []):
+            try:
+                if not isinstance(seq_data, dict):
+                    continue
+                seq_data.setdefault('campaign_id', campaign.id)
+                campaign.sequences.append(transform_campaign_sequence(seq_data))
+            except Exception as e:
+                logger.error(f"Error transforming sequence for campaign {campaign.id}: {str(e)}")
+
+    return campaign
 
 
 def transform_campaign_sequence(api_data: Dict[str, Any]) -> CampaignSequence:

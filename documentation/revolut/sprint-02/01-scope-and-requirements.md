@@ -36,7 +36,7 @@ The Merchant API uses a **static Bearer API key** — significantly simpler than
 
 ```
 Authorization: Bearer <REVOLUT_MERCHANT_API_KEY>
-Revolut-Api-Version: 2024-09-01
+Revolut-Api-Version: 2025-12-04
 ```
 
 - No token exchange, no JWT signing, no refresh token management.

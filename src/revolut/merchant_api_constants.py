@@ -6,7 +6,7 @@ Verify endpoint paths and version strings against https://developer.revolut.com/
 """
 
 # Merchant API version header value.
-DEFAULT_API_VERSION = "2024-09-01"
+DEFAULT_API_VERSION = "2025-12-04"
 
 # Resource path prefix (all paths are relative to the host root).
 API_PREFIX = "/api"

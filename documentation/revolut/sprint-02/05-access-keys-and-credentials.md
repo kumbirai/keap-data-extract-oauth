@@ -8,7 +8,7 @@ Every request requires two headers:
 
 ```
 Authorization: Bearer <REVOLUT_MERCHANT_API_KEY>
-Revolut-Api-Version: 2024-09-01
+Revolut-Api-Version: 2025-12-04
 ```
 
 ## 5.2 Obtaining the API key
@@ -27,7 +27,7 @@ The Sandbox environment (`https://sandbox-merchant.revolut.com`) uses a separate
 |----------|----------|---------|-------------|
 | `REVOLUT_MERCHANT_API_KEY` | **Yes** | — | Bearer token for Merchant API |
 | `REVOLUT_MERCHANT_USE_SANDBOX` | No | `false` | Set `true` to use sandbox base URL |
-| `REVOLUT_MERCHANT_API_VERSION` | No | `2024-09-01` | API version header value |
+| `REVOLUT_MERCHANT_API_VERSION` | No | `2025-12-04` | API version header value |
 | `REVOLUT_MERCHANT_LOOKBACK_DAYS` | No | `7` | Re-sync window for orders (days) |
 | `REVOLUT_MERCHANT_DISPUTE_LOOKBACK_DAYS` | No | `30` | Re-sync window for disputes (days) |
 | `REVOLUT_MERCHANT_INITIAL_HISTORY_DAYS` | No | `730` | Days of history on first run |
@@ -42,6 +42,7 @@ The Sandbox environment (`https://sandbox-merchant.revolut.com`) uses a separate
 # Revolut Merchant API (Sprint-02)
 REVOLUT_MERCHANT_API_KEY=sk_sandbox_AbCdEfGhIjKlMnOpQrStUvWx
 REVOLUT_MERCHANT_USE_SANDBOX=true
+# REVOLUT_MERCHANT_API_VERSION=2025-12-04
 REVOLUT_MERCHANT_STORE_RAW_PAYLOAD=false
 REVOLUT_MERCHANT_LOOKBACK_DAYS=7
 REVOLUT_MERCHANT_INITIAL_HISTORY_DAYS=730
@@ -79,7 +80,8 @@ The `Revolut-Api-Version` header pins the API contract. Current supported versio
 
 | Version | Status |
 |---------|--------|
-| `2024-09-01` | Current (recommended) |
+| `2025-12-04` | Current (recommended) |
+| `2024-09-01` | Supported |
 | `2024-05-01` | Supported |
 | `2023-09-01` | Supported (older) |
 
